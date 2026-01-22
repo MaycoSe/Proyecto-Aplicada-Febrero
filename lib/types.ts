@@ -1,4 +1,7 @@
+// Copia esto en lib/types.ts reemplazando el contenido anterior
+
 export type UserRole = "admin" | "judge"
+export type EvaluationType = "standard" | "inspection" // Nuevo: Diferencia el tipo de evento
 
 export interface User {
   id: string
@@ -24,6 +27,7 @@ export interface Event {
   id: string
   name: string
   eventType: string
+  evaluationType: EvaluationType // Nuevo: Define qué formulario mostrar
   description?: string
   maxScore: number
   weight: number
@@ -40,9 +44,12 @@ export interface Score {
   eventId: string
   judgeId: string
   score: number
+  // Campos para eventos estándar
   creativityScore?: number
   executionScore?: number
   presentationScore?: number
+  // Campo nuevo para guardar los 10 ítems de inspección en formato JSON
+  details?: Record<string, number> 
   notes?: string
   createdAt: string
   updatedAt: string
@@ -68,7 +75,7 @@ export interface AuditLog {
   oldValues?: Record<string, any>
   newValues?: Record<string, any>
   ipAddress?: string
-  userAgent?: string
+  userAgent?: string // Importante para el requisito 3.1.12 (Auditoría de dispositivo)
   createdAt: string
 }
 

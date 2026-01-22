@@ -1,6 +1,7 @@
 "use server"
 
 import { cookies } from "next/headers"
+import { redirect } from "next/navigation" // <--- Importante: Agregamos redirect
 import type { User } from "./types"
 import { mockUsers } from "./mock-data"
 
@@ -10,27 +11,26 @@ export async function login(
   email: string,
   password: string,
 ): Promise<{ success: boolean; user?: User; error?: string }> {
-  // In production, verify password hash against database
-  // For now, simple mock authentication
+  // Verificación simulada (mock)
   const user = mockUsers.find((u) => u.email === email && u.isActive)
 
   if (!user) {
-    return { success: false, error: "Invalid credentials" }
+    return { success: false, error: "Credenciales inválidas" }
   }
 
-  // Simple password check for demo (in production, use bcrypt)
+  // Contraseñas de demostración
   if (password !== "admin123" && password !== "judge123") {
-    return { success: false, error: "Invalid credentials" }
+    return { success: false, error: "Contraseña incorrecta" }
   }
 
-  // Create session
+  // Crear sesión
   const sessionData = JSON.stringify({ userId: user.id, role: user.role })
   const cookieStore = await cookies()
   cookieStore.set(SESSION_COOKIE, sessionData, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 7, // 7 días
   })
 
   return { success: true, user }
@@ -61,7 +61,7 @@ export async function getCurrentUser(): Promise<User | null> {
 export async function requireAuth(): Promise<User> {
   const user = await getCurrentUser()
   if (!user) {
-    throw new Error("Unauthorized")
+    redirect("/login") // <--- Redirige en lugar de lanzar error
   }
   return user
 }
@@ -69,7 +69,18 @@ export async function requireAuth(): Promise<User> {
 export async function requireAdmin(): Promise<User> {
   const user = await requireAuth()
   if (user.role !== "admin") {
-    throw new Error("Admin access required")
+    // Si está logueado pero no es admin, lo mandamos al login o inicio
+    redirect("/login") 
+  }
+  return user
+}
+
+// --- ESTA ES LA FUNCIÓN QUE TE FALTABA ---
+export async function requireJudge(): Promise<User> {
+  const user = await requireAuth()
+  // Permitimos el acceso si es Juez O si es Admin
+  if (user.role !== "judge" && user.role !== "admin") {
+    redirect("/login")
   }
   return user
 }

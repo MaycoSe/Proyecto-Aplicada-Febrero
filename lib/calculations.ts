@@ -1,44 +1,58 @@
-import type { ClubRanking } from "./types"
-import { mockClubs, mockScores, mockSanctions, mockEvents } from "./mock-data"
+import type { Club, Event, Score, Sanction, ClubRanking } from "./types"
 
-export function calculateRankings(): ClubRanking[] {
+/**
+ * Calcula el ranking global de todos los clubes activos.
+ * Aplica la fórmula: (Suma de Puntajes * Peso del Evento) - Puntos de Sanción
+ */
+export function calculateRankings(
+  clubs: Club[],
+  events: Event[],
+  scores: Score[],
+  sanctions: Sanction[]
+): ClubRanking[] {
   const rankings: ClubRanking[] = []
 
-  for (const club of mockClubs) {
+  for (const club of clubs) {
     if (!club.isActive) continue
 
-    // Calculate total weighted scores
+    // 1. Calcular puntajes positivos (considerando el peso del evento)
     let totalScore = 0
-    const clubScores = mockScores.filter((s) => s.clubId === club.id)
+    const clubScores = scores.filter((s) => s.clubId === club.id)
 
     for (const score of clubScores) {
-      const event = mockEvents.find((e) => e.id === score.eventId)
+      const event = events.find((e) => e.id === score.eventId)
       if (event && event.isActive) {
-        totalScore += score.score * event.weight
+        // Si el evento tiene un peso específico (ej: vale doble), se aplica aquí
+        // Por defecto el peso suele ser 1
+        const weight = event.weight > 0 ? event.weight : 1
+        totalScore += score.score * weight
       }
     }
 
-    // Calculate total sanction deductions
-    const clubSanctions = mockSanctions.filter((s) => s.clubId === club.id)
+    // 2. Calcular deducciones por sanciones
+    const clubSanctions = sanctions.filter((s) => s.clubId === club.id)
     const totalDeductions = clubSanctions.reduce((sum, s) => sum + s.pointsDeducted, 0)
 
-    // Calculate final score
+    // 3. Calcular puntaje final (no permitimos negativos para evitar problemas visuales, opcional)
     const finalScore = Math.max(0, totalScore - totalDeductions)
 
     rankings.push({
       clubId: club.id,
       clubName: club.name,
       clubCode: club.code,
-      totalScore,
-      eventScores: totalScore,
-      sanctionDeductions: totalDeductions,
-      finalScore,
-      rank: 0, // Will be set after sorting
+      totalScore, // Puntaje bruto ganado
+      eventScores: totalScore, // Alias para compatibilidad
+      sanctionDeductions: totalDeductions, // Total descontado
+      finalScore, // El número que define al ganador
+      rank: 0, // Se asigna después de ordenar
     })
   }
 
-  // Sort by final score (descending) and assign ranks
+  // 4. Ordenar descendente (Mayor puntaje primero)
   rankings.sort((a, b) => b.finalScore - a.finalScore)
+
+  // 5. Asignar posición (1º, 2º, 3º...)
+  // Manejo de empates: Si tienen el mismo puntaje, deberían tener el mismo rango (lógica simple por ahora)
   rankings.forEach((ranking, index) => {
     ranking.rank = index + 1
   })
@@ -46,33 +60,57 @@ export function calculateRankings(): ClubRanking[] {
   return rankings
 }
 
-export function getClubDetailedStats(clubId: string) {
-  const club = mockClubs.find((c) => c.id === clubId)
+/**
+ * Obtiene estadísticas detalladas de un solo club para su perfil.
+ * Útil para ver el desglose de inspecciones.
+ */
+export function getClubDetailedStats(
+  clubId: string,
+  clubs: Club[],
+  events: Event[],
+  scores: Score[],
+  sanctions: Sanction[]
+) {
+  const club = clubs.find((c) => c.id === clubId)
   if (!club) return null
 
-  const clubScores = mockScores.filter((s) => s.clubId === clubId)
-  const clubSanctions = mockSanctions.filter((s) => s.clubId === clubId)
+  const clubScores = scores.filter((s) => s.clubId === clubId)
+  const clubSanctions = sanctions.filter((s) => s.clubId === clubId)
 
+  // Desglose evento por evento
   const eventBreakdown = clubScores.map((score) => {
-    const event = mockEvents.find((e) => e.id === score.eventId)
+    const event = events.find((e) => e.id === score.eventId)
     return {
-      eventName: event?.name || "Unknown",
-      eventType: event?.eventType || "Unknown",
+      id: event?.id,
+      eventName: event?.name || "Evento Desconocido",
+      eventType: event?.eventType || "General",
+      evaluationType: event?.evaluationType || "standard",
       score: score.score,
       weight: event?.weight || 1,
       weightedScore: score.score * (event?.weight || 1),
+      // Detalles específicos
       creativityScore: score.creativityScore,
       executionScore: score.executionScore,
       presentationScore: score.presentationScore,
+      details: score.details, // Aquí van los items de inspección
       notes: score.notes,
     }
   })
+
+  // Totales
+  const totalEvents = clubScores.length
+  const averageScore = totalEvents > 0 
+    ? clubScores.reduce((sum, s) => sum + s.score, 0) / totalEvents 
+    : 0
+  
+  const totalDeductions = clubSanctions.reduce((sum, s) => sum + s.pointsDeducted, 0)
 
   return {
     club,
     eventBreakdown,
     sanctions: clubSanctions,
-    totalEvents: clubScores.length,
-    averageScore: clubScores.length > 0 ? clubScores.reduce((sum, s) => sum + s.score, 0) / clubScores.length : 0,
+    totalEvents,
+    averageScore,
+    totalDeductions
   }
 }
