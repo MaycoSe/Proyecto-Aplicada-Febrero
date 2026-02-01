@@ -70,7 +70,7 @@ export function SanctionForm({ event }: SanctionFormProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-red-600" />
-          Sanction Details
+          Detalles de la sanción
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -78,12 +78,12 @@ export function SanctionForm({ event }: SanctionFormProps) {
           {success && (
             <Alert className="border-green-200 bg-green-50">
               <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">Sanction recorded successfully!</AlertDescription>
+              <AlertDescription className="text-green-800">¡Sanción registrada exitosamente!</AlertDescription>
             </Alert>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="club">Affected Club *</Label>
+            <Label htmlFor="club">Club afectado *</Label>
             <Select value={clubId} onValueChange={setClubId} required disabled={loading}>
               <SelectTrigger id="club">
                 <SelectValue placeholder="Choose a club" />
@@ -101,7 +101,7 @@ export function SanctionForm({ event }: SanctionFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="sanctionType">Sanction Type *</Label>
+            <Label htmlFor="sanctionType">Tipo de sanción *</Label>
             <Select value={sanctionType} onValueChange={setSanctionType} required disabled={loading}>
               <SelectTrigger id="sanctionType">
                 <SelectValue placeholder="Select sanction type" />
@@ -117,7 +117,7 @@ export function SanctionForm({ event }: SanctionFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="points">Points Deducted *</Label>
+            <Label htmlFor="points">Puntos deducidos *</Label>
             <Input
               id="points"
               type="number"
@@ -132,7 +132,7 @@ export function SanctionForm({ event }: SanctionFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description *</Label>
+            <Label htmlFor="description">Descripción *</Label>
             <Textarea
               id="description"
               placeholder="Provide detailed explanation of the sanction..."
@@ -147,7 +147,7 @@ export function SanctionForm({ event }: SanctionFormProps) {
           <Alert className="border-yellow-200 bg-yellow-50">
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
             <AlertDescription className="text-yellow-800">
-              Sanctions are permanent and will affect the club's final score. Please ensure all details are accurate.
+              Las sanciones son permanentes y afectarán el marcador final del club. Por favor, asegúrese de que toda la información sea correcta.
             </AlertDescription>
           </Alert>
 
@@ -156,7 +156,7 @@ export function SanctionForm({ event }: SanctionFormProps) {
               {loading ? "Submitting..." : "Apply Sanction"}
             </Button>
             <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
-              Cancel
+              Cancelar
             </Button>
           </div>
         </form>
