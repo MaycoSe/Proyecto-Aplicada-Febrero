@@ -18,7 +18,7 @@ export interface Club {
   name: string
   code: string
   description?: string
-  isActive: boolean
+  is_active: boolean | number // Acepta tanto boolean como número (0 o 1)
   createdAt: string
   updatedAt: string
 }
@@ -88,4 +88,11 @@ export interface ClubRanking {
   sanctionDeductions: number
   finalScore: number
   rank: number
+}
+
+export interface Event {
+  id: string
+  name: string
+  // ... tus otros campos
+  assignedJudges?: string[] // <--- Agrega esto
 }

@@ -1,59 +1,126 @@
 "use server"
 
 import { cookies } from "next/headers"
-import { redirect } from "next/navigation" // <--- Importante: Agregamos redirect
-import type { User } from "./types"
-import { mockUsers } from "./mock-data"
+import { redirect } from "next/navigation"
+import type { User, UserRole } from "./types"
 
-const SESSION_COOKIE = "camp_session"
+const TOKEN_COOKIE = "auth_token"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+
+// Función auxiliar para convertir el rol de Laravel ("Admin", "Juez") al frontend ("admin", "judge")
+function mapRole(laravelRole: string): UserRole {
+  const role = laravelRole.toLowerCase().trim();
+  if (role === 'admin' || role === 'administrador') return 'admin';
+  if (role === 'juez' || role === 'judge') return 'judge';
+  return 'judge'; // Default fallback
+}
 
 export async function login(
   email: string,
   password: string,
 ): Promise<{ success: boolean; user?: User; error?: string }> {
-  // Verificación simulada (mock)
-  const user = mockUsers.find((u) => u.email === email && u.isActive)
+  
+  try {
+    const response = await fetch(`${API_URL}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    })
 
-  if (!user) {
-    return { success: false, error: "Credenciales inválidas" }
+    const data = await response.json()
+
+    if (!response.ok) {
+      return { 
+        success: false, 
+        error: data.message || data.email?.[0] || "Credenciales inválidas" 
+      }
+    }
+
+    // Mapeo de datos desde AuthController::login
+    // Estructura esperada: { user: {...}, token: "...", role: "..." }
+    const userRole = mapRole(data.role);
+
+    const userData: User = {
+      id: data.user.id.toString(),
+      email: data.user.email,
+      fullName: `${data.user.name} ${data.user.last_name || ''}`.trim(),
+      role: userRole,
+      isActive: true,
+      createdAt: data.user.created_at || new Date().toISOString(),
+      updatedAt: data.user.updated_at || new Date().toISOString(),
+    }
+
+    // Guardar cookie
+    const cookieStore = await cookies()
+    cookieStore.set(TOKEN_COOKIE, data.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 días
+    })
+
+    return { success: true, user: userData }
+
+  } catch (error) {
+    console.error("Login error:", error)
+    return { success: false, error: "Error de conexión con el servidor" }
   }
-
-  // Contraseñas de demostración
-  if (password !== "admin123" && password !== "judge123") {
-    return { success: false, error: "Contraseña incorrecta" }
-  }
-
-  // Crear sesión
-  const sessionData = JSON.stringify({ userId: user.id, role: user.role })
-  const cookieStore = await cookies()
-  cookieStore.set(SESSION_COOKIE, sessionData, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 días
-  })
-
-  return { success: true, user }
 }
 
 export async function logout(): Promise<void> {
   const cookieStore = await cookies()
-  cookieStore.delete(SESSION_COOKIE)
+  const token = cookieStore.get(TOKEN_COOKIE)?.value
+
+  if (token) {
+    try {
+      await fetch(`${API_URL}/logout`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        }
+      })
+    } catch (e) {
+      // Ignoramos error de logout si el token ya expiró
+    }
+  }
+  
+  cookieStore.delete(TOKEN_COOKIE)
 }
 
 export async function getCurrentUser(): Promise<User | null> {
   const cookieStore = await cookies()
-  const session = cookieStore.get(SESSION_COOKIE)
+  const token = cookieStore.get(TOKEN_COOKIE)?.value
 
-  if (!session) {
-    return null
-  }
+  if (!token) return null
 
   try {
-    const { userId } = JSON.parse(session.value)
-    const user = mockUsers.find((u) => u.id === userId)
-    return user || null
-  } catch {
+    const response = await fetch(`${API_URL}/user`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+      cache: 'no-store'
+    })
+
+    if (!response.ok) return null
+
+    const data = await response.json()
+    
+    // Mapeo de datos desde UserController::get_user (versión actualizada)
+    return {
+        id: data.id.toString(),
+        email: data.email,
+        fullName: `${data.name} ${data.last_name || ''}`.trim(),
+        role: mapRole(data.role),
+        isActive: true,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+    }
+  } catch (e) {
     return null
   }
 }
@@ -61,7 +128,7 @@ export async function getCurrentUser(): Promise<User | null> {
 export async function requireAuth(): Promise<User> {
   const user = await getCurrentUser()
   if (!user) {
-    redirect("/login") // <--- Redirige en lugar de lanzar error
+    redirect("/login")
   }
   return user
 }
@@ -69,16 +136,13 @@ export async function requireAuth(): Promise<User> {
 export async function requireAdmin(): Promise<User> {
   const user = await requireAuth()
   if (user.role !== "admin") {
-    // Si está logueado pero no es admin, lo mandamos al login o inicio
     redirect("/login") 
   }
   return user
 }
 
-// --- ESTA ES LA FUNCIÓN QUE TE FALTABA ---
 export async function requireJudge(): Promise<User> {
   const user = await requireAuth()
-  // Permitimos el acceso si es Juez O si es Admin
   if (user.role !== "judge" && user.role !== "admin") {
     redirect("/login")
   }

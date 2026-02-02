@@ -1,92 +1,82 @@
-import { requireAdmin } from "@/lib/auth"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
+import Link from "next/link"
+import { Event } from "@/lib/types"
+import { getEvents } from "@/lib/api" // <--- Importamos el fetcher real
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { mockEvents } from "@/lib/mock-data"
-import { Plus, Calendar, Edit, Users } from "lucide-react"
-import Link from "next/link" // <--- Importante: Importamos Link
 
 export default async function EventsPage() {
-  await requireAdmin()
+  // 1. Obtenemos datos reales
+  let events: Event[] = []
+  
+  try {
+    events = await getEvents()
+  } catch (error) {
+    console.error("Error cargando eventos:", error)
+  }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-blue-950">Gestión de Eventos</h1>
-          <p className="mt-1 text-slate-600">Administra las actividades, inspecciones y competencias.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Gestión de Eventos</h1>
+          <p className="text-muted-foreground">Administra los eventos y competencias del camporee.</p>
         </div>
-        
-        {/* BOTÓN NUEVO EVENTO CON LINK */}
-        <Link href="/admin/events/new">
-          <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button asChild>
+          <Link href="/admin/events/new">
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Evento
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-1">
-        {mockEvents.map((event) => (
-          <Card key={event.id} className="hover:border-blue-300 transition-colors">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="bg-blue-50 p-2 rounded-lg">
-                    <Calendar className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg font-bold text-slate-900">{event.name}</CardTitle>
-                    <p className="text-sm text-slate-500 flex items-center gap-2">
-                        Tipo: <span className="font-medium capitalize">{event.eventType}</span>
-                        {event.evaluationType === 'inspection' && (
-                            <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
-                                Inspección Técnica
-                            </Badge>
-                        )}
-                    </p>
-                  </div>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {events.length === 0 ? (
+          <p className="text-muted-foreground col-span-3 text-center py-10">
+            No hay eventos registrados.
+          </p>
+        ) : (
+          events.map((event) => (
+            <Card key={event.id}>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                <div>
+                  <CardTitle className="text-xl">{event.name}</CardTitle>
+                  <CardDescription>{event.eventType}</CardDescription>
                 </div>
-                <Badge className={event.isActive ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-slate-100 text-slate-600 hover:bg-slate-100"}>
+                <Badge variant={event.isActive ? "default" : "secondary"}>
                   {event.isActive ? "Activo" : "Inactivo"}
                 </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3 border-t pt-4">
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase">Puntaje Máximo</p>
-                  <p className="text-xl font-bold text-slate-900">{event.maxScore} pts</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase">Peso / Multiplicador</p>
-                  <p className="text-xl font-bold text-slate-900">{event.weight}x</p>
-                </div>
-                
-                {/* BOTONES DE ACCIÓN CON LINKS */}
-                <div className="flex items-center justify-end gap-2">
-                  <Link href={`/admin/events/${event.id}/edit`}>
-                    <Button variant="outline" size="sm" className="text-slate-600">
-                      <Edit className="h-3 w-3 mr-2" />
-                      Editar
-                    </Button>
-                  </Link>
-                  <Link href={`/admin/events/${event.id}/judges`}>
-                    <Button variant="outline" size="sm" className="text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100">
-                      <Users className="h-3 w-3 mr-2" />
-                      Asignar Jueces
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-              {event.description && (
-                  <div className="mt-4 bg-slate-50 p-3 rounded text-sm text-slate-600 italic">
-                    "{event.description}"
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Puntaje Máx:</span>
+                    <span className="font-medium">{event.maxScore}</span>
                   </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Peso:</span>
+                    <span className="font-medium">{event.weight}%</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Evaluación:</span>
+                    <span className="font-medium capitalize">
+                       {event.evaluationType === "inspection" ? "Inspección" : "Estándar"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/admin/events/${event.id}/edit`}>Editar</Link>
+                  </Button>
+                  <Button variant="secondary" size="sm" asChild>
+                    <Link href={`/admin/events/${event.id}/judges`}>Jueces</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   )

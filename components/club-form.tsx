@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle, Trophy, Edit } from "lucide-react"
 import { createClub, updateClub } from "@/app/actions"
+// Asegúrate de que tu tipo Club tenga is_active opcional o definido
 import type { Club } from "@/lib/types"
 
 interface ClubFormProps {
@@ -24,8 +25,14 @@ export function ClubForm({ club }: ClubFormProps) {
   const action = club ? updateClub : createClub
   const [state, formAction, isPending] = useActionState(action, initialState)
   
-  // Estado local para manejar el Switch manualmente
-  const [isActive, setIsActive] = useState(club ? club.isActive : true)
+  // CORRECCIÓN CRÍTICA:
+  // Laravel envía 'is_active', no 'isActive'.
+  // Verificamos ambas formas por seguridad.
+  const initialActive = club 
+    ? (Number(club.is_active) === 1 || club.is_active === true || Number(club.is_active) === 1) 
+    : true;
+
+  const [isActive, setIsActive] = useState(initialActive)
 
   useEffect(() => {
     if (state.success) {
@@ -55,6 +62,11 @@ export function ClubForm({ club }: ClubFormProps) {
           )}
 
           {club && <input type="hidden" name="id" value={club.id} />}
+          
+          {/* INPUT OCULTO ÚNICO Y CORRECTO:
+              Si isActive es true, envía "on". Si es false, envía string vacío.
+          */}
+          <input type="hidden" name="isActive" value={isActive ? "on" : ""} />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2 space-y-2">
@@ -72,16 +84,16 @@ export function ClubForm({ club }: ClubFormProps) {
             <Textarea id="description" name="description" placeholder="Lema o descripción breve..." defaultValue={club?.description} rows={3} />
           </div>
 
+          {/* ZONA DE SWITCH */}
           <div className="flex items-center space-x-2 border-t pt-4">
-            {/* INPUT OCULTO PARA GARANTIZAR QUE SE ENVÍE EL VALOR */}
-            <input type="hidden" name="isActive" value={isActive ? "on" : "off"} />
-            
             <Switch 
-                id="isActive" 
+                id="switch-ui" // ID diferente al name para evitar conflictos
                 checked={isActive} 
                 onCheckedChange={setIsActive} 
             />
-            <Label htmlFor="isActive">Club activo y compitiendo</Label>
+            <Label htmlFor="switch-ui" className="cursor-pointer">
+                {isActive ? "Club ACTIVO (Visible para jueces)" : "Club INACTIVO (Oculto)"}
+            </Label>
           </div>
 
           <div className="flex gap-3 pt-2">

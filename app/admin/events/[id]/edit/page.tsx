@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth"
 import { EventForm } from "@/components/event-form"
-import { mockEvents } from "@/lib/mock-data"
+import { getEventById } from "@/lib/api" // <--- CAMBIO IMPORTANTE: Importamos la API real
 import { notFound } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
@@ -13,12 +13,17 @@ interface PageProps {
 }
 
 export default async function EditEventPage({ params }: PageProps) {
+  // 1. Verificar permisos
   await requireAdmin()
-  const { id } = await params // Resolvemos la promesa
+  
+  // 2. Resolver parámetros (Next.js 15/16)
+  const { id } = await params 
 
-  // Buscamos el evento existente
-  const event = mockEvents.find((e) => e.id === id)
+  // 3. Buscar el evento REAL en la base de datos
+  // Usamos .catch(() => null) para evitar que explote si la API da error
+  const event = await getEventById(id).catch(() => null)
 
+  // 4. Si no existe en la BD, mostrar 404
   if (!event) {
     notFound()
   }
@@ -40,7 +45,7 @@ export default async function EditEventPage({ params }: PageProps) {
          </p>
       </div>
 
-      {/* Pasamos el evento al formulario para activar el "Modo Edición" */}
+      {/* Pasamos el evento real al formulario */}
       <EventForm event={event} />
     </div>
   )

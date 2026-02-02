@@ -1,88 +1,83 @@
-import { requireAdmin } from "@/lib/auth"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { mockUsers } from "@/lib/mock-data"
-import { UserActionsMenu } from "@/components/user-actions-menu" // <--- IMPORTAMOS EL NUEVO COMPONENTE
-import { Plus, UserCog, Shield, Mail } from "lucide-react"
+import { Plus } from "lucide-react"
 import Link from "next/link"
+import { User } from "@/lib/types"
+import { getAllUsers } from "@/lib/api" // <--- Usamos la nueva función
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default async function UsersPage() {
-  await requireAdmin()
+  // 1. Fetch real
+  let users: User[] = []
+  
+  try {
+    // Mapeamos la respuesta del backend para asegurar que coincida con la interfaz User
+    const rawUsers = await getAllUsers()
+    users = rawUsers.map((u: any) => ({
+      id: u.id.toString(),
+      email: u.email,
+      fullName: `${u.name} ${u.last_name || ''}`.trim(),
+      role: u.role_id === 1 ? 'admin' : 'judge', // Ajusta según tus IDs de rol
+      isActive: true, // O usa u.is_active si tienes ese campo en BD
+    }))
+  } catch (error) {
+    console.error("Error cargando usuarios:", error)
+  }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-blue-950">Usuarios y Accesos</h1>
-          <p className="mt-1 text-slate-600">Administra jueces, directores y permisos del sistema.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Gestión de Usuarios</h1>
+          <p className="text-muted-foreground">Administra los jueces y administradores del sistema.</p>
         </div>
-        
-        {/* BOTÓN NUEVO USUARIO (Asegúrate de que la carpeta /new existe) */}
-        <Link href="/admin/users/new">
-          <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button asChild>
+          <Link href="/admin/users/new">
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Usuario
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
-      <Card className="border-t-4 border-t-blue-600 shadow-md">
-        <CardHeader>
-          <CardTitle>Listado de Personal</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader className="bg-slate-50">
-              <TableRow>
-                <TableHead className="font-bold text-slate-700">Usuario</TableHead>
-                <TableHead className="font-bold text-slate-700">Rol</TableHead>
-                <TableHead className="font-bold text-slate-700">Estado</TableHead>
-                <TableHead className="font-bold text-slate-700 text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockUsers.map((user) => (
-                <TableRow key={user.id} className="hover:bg-slate-50">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="bg-slate-100 p-2 rounded-full text-slate-600">
-                        {user.role === 'admin' ? <Shield className="h-4 w-4" /> : <UserCog className="h-4 w-4" />}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-slate-900">{user.fullName}</span>
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
-                            <Mail className="h-3 w-3" /> {user.email}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={`capitalize font-medium ${
-                        user.role === 'admin' 
-                            ? 'bg-purple-50 text-purple-700 border-purple-200' 
-                            : 'bg-blue-50 text-blue-700 border-blue-200'
-                    }`}>
-                      {user.role === 'admin' ? 'Administrador' : 'Juez / Evaluador'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={user.isActive ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-slate-100 text-slate-500"}>
-                      {user.isActive ? "Activo" : "Inactivo"}
-                    </Badge>
-                  </TableCell>
-                  
-                  {/* AQUÍ ESTÁ EL MENÚ FUNCIONAL */}
-                  <TableCell className="text-right">
-                    <UserActionsMenu user={user} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {users.length === 0 ? (
+           <p className="text-muted-foreground col-span-3 text-center py-10">
+             No hay usuarios registrados.
+           </p>
+        ) : (
+          users.map((user) => (
+            <Card key={user.id}>
+              <CardHeader className="flex flex-row items-center gap-4 space-y-0">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={`/placeholder-user.jpg`} alt={user.fullName} />
+                  <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <CardTitle className="text-base">{user.fullName}</CardTitle>
+                  <CardDescription>{user.email}</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between mb-4">
+                  <Badge variant="outline" className="capitalize">
+                    {user.role === 'admin' ? 'Administrador' : 'Juez'}
+                  </Badge>
+                  <Badge variant={user.isActive ? "default" : "secondary"}>
+                    {user.isActive ? "Activo" : "Inactivo"}
+                  </Badge>
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/admin/users/${user.id}/edit`}>Editar</Link>
+                  </Button>
+                  {/* Podrías agregar botón de eliminar aquí usando un Client Component */}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   )
 }

@@ -1,88 +1,78 @@
-import { requireJudge } from "@/lib/auth"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { mockEvents } from "@/lib/mock-data"
-import { Calendar, PenTool, AlertTriangle } from "lucide-react"
+import { ClipboardList, AlertTriangle } from "lucide-react"
 import Link from "next/link"
+import { getEvents } from "@/lib/api" // <--- Importamos el fetcher real
+import { Event } from "@/lib/types"
 
 export default async function JudgeDashboard() {
-  const user = await requireJudge()
+  // 1. Obtener eventos reales
+  let events: Event[] = []
+  
+  try {
+    events = await getEvents()
+  } catch (error) {
+    console.error("Error al cargar eventos para el juez:", error)
+  }
 
-  // FILTRO INTELIGENTE:
-  // Mostramos el evento SI:
-  // 1. Está activo (isActive)
-  // 2. Y ADEMÁS:
-  //    a) No tiene lista de jueces asignados (es abierto para todos)
-  //    b) O el usuario está en la lista de 'assignedJudges'
-  const activeEvents = mockEvents.filter(e => 
-    e.isActive && 
-    (!e.assignedJudges || e.assignedJudges.length === 0 || e.assignedJudges.includes(user.id))
-  )
+  // Filtrar solo los activos (opcional, si el backend no lo hace ya)
+  const activeEvents = events.filter(e => e.isActive)
 
   return (
-    <div className="container max-w-4xl py-6 space-y-8 animate-in fade-in duration-500">
-      <div className="bg-blue-900 rounded-2xl p-6 text-white shadow-lg">
-        <h1 className="text-2xl font-bold">¡Hola, {user.fullName}!</h1>
-        <p className="text-blue-100 mt-1">
-          Bienvenido. Tienes <span className="font-bold text-yellow-300">{activeEvents.length}</span> eventos disponibles para evaluar hoy.
-        </p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Panel de Evaluación</h1>
+        <p className="text-muted-foreground">Selecciona un evento para comenzar a calificar o registrar sanciones.</p>
       </div>
 
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-blue-600" /> Eventos Asignados
-        </h2>
-        
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {activeEvents.length === 0 ? (
-           <div className="text-center py-12 border-2 border-dashed rounded-xl bg-slate-50">
-              <p className="text-slate-500">No tienes eventos asignados en este momento.</p>
-           </div>
+           <p className="text-muted-foreground col-span-3 text-center py-10">
+             No hay eventos activos disponibles para evaluar en este momento.
+           </p>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
-            {activeEvents.map((event) => (
-              <Card key={event.id} className="group hover:border-blue-400 transition-all shadow-sm hover:shadow-md">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <Badge variant={event.evaluationType === 'inspection' ? 'secondary' : 'default'} className="mb-2">
-                      {event.evaluationType === 'inspection' ? 'Inspección' : 'Competencia'}
-                    </Badge>
-                    {event.weight > 1 && (
-                        <Badge variant="outline" className="border-yellow-300 bg-yellow-50 text-yellow-800">
-                          x{event.weight} Puntos
-                        </Badge>
-                    )}
+          activeEvents.map((event) => (
+            <Card key={event.id} className="flex flex-col">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <Badge variant={event.eventType === "Camporee" ? "default" : "secondary"}>
+                    {event.eventType || "General"}
+                  </Badge>
+                  <Badge variant="outline">{event.evaluationType === "inspection" ? "Inspección" : "Estándar"}</Badge>
+                </div>
+                <CardTitle className="mt-4">{event.name}</CardTitle>
+                <CardDescription className="line-clamp-2">
+                  {event.description || "Sin descripción disponible."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1">
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <div className="flex justify-between">
+                    <span>Puntaje Máximo:</span>
+                    <span className="font-medium text-foreground">{event.maxScore} pts</span>
                   </div>
-                  <CardTitle className="text-lg text-blue-900">{event.name}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {event.description || "Sin descripción adicional."}
-                  </CardDescription>
-                </CardHeader>
-                
-                <CardContent className="text-sm text-slate-500 pb-3">
-                   <div className="flex justify-between border-t pt-3">
-                      <span>Puntaje Máximo:</span>
-                      <span className="font-bold text-slate-900">{event.maxScore} pts</span>
-                   </div>
-                </CardContent>
-
-                <CardFooter className="grid grid-cols-2 gap-3 pt-0">
-                  <Link href={`/judge/score/${event.id}`} className="w-full">
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                      <PenTool className="mr-2 h-4 w-4" />
-                      Evaluar
-                    </Button>
+                  <div className="flex justify-between">
+                    <span>Peso:</span>
+                    <span className="font-medium text-foreground">{event.weight}%</span>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="flex gap-2">
+                <Button className="flex-1" asChild>
+                  <Link href={`/judge/score/${event.id}`}>
+                    <ClipboardList className="mr-2 h-4 w-4" />
+                    Evaluar
                   </Link>
-                  <Link href={`/judge/sanction/${event.id}`} className="w-full">
-                    <Button variant="outline" className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700">
-                      <AlertTriangle className="mr-2 h-4 w-4" />
-                      Sancionar
-                    </Button>
+                </Button>
+                <Button variant="destructive" size="icon" asChild title="Aplicar Sanción">
+                  <Link href={`/judge/sanction/${event.id}`}>
+                    <AlertTriangle className="h-4 w-4" />
                   </Link>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
+                </Button>
+              </CardFooter>
+            </Card>
+          ))
         )}
       </div>
     </div>

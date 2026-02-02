@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle, Users, Shield } from "lucide-react"
+import { CheckCircle, Users } from "lucide-react"
 import { assignJudges } from "@/app/actions"
 import type { Event, User } from "@/lib/types"
 
@@ -26,7 +26,9 @@ export function AssignJudgesForm({ event, judges }: AssignJudgesFormProps) {
   const router = useRouter()
   const [state, formAction, isPending] = useActionState(assignJudges, initialState)
 
-  // IDs de jueces ya asignados previamente
+  // IDs de jueces ya asignados previamente. 
+  // Nota: Asegúrate de que el objeto 'event' que pasas tenga esta propiedad o la pases aparte.
+  // Si tu backend no devuelve 'assignedJudges' dentro del evento, tendrás que ajustarlo en la página padre.
   const currentlyAssigned = event.assignedJudges || []
 
   useEffect(() => {
