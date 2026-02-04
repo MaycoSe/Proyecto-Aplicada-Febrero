@@ -51,7 +51,9 @@ export default async function UsersPage() {
               <CardHeader className="flex flex-row items-center gap-4 space-y-0">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={`/placeholder-user.jpg`} alt={user.fullName} />
-                  <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>
+                    {user.fullName.charAt(0)}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <CardTitle className="text-base">{user.fullName}</CardTitle>
@@ -61,7 +63,7 @@ export default async function UsersPage() {
               <CardContent>
                 <div className="flex items-center justify-between mb-4">
                   <Badge variant="outline" className="capitalize">
-                    {user.role === 'admin' ? 'Administrador' : 'Juez'}
+                    {user.role_id === 1 ? 'Administrador' : 'Juez'}
                   </Badge>
                   <Badge variant={user.isActive ? "default" : "secondary"}>
                     {user.isActive ? "Activo" : "Inactivo"}

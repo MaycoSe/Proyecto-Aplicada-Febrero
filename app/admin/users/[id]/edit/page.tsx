@@ -1,10 +1,13 @@
-import { requireAdmin } from "@/lib/auth"
+import { requireAdmin, getAuthToken } from "@/lib/auth" // Asegúrate de importar getAuthToken
 import { UserForm } from "@/components/user-form"
-import { mockUsers } from "@/lib/mock-data"
 import { notFound } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import type { User } from "@/lib/types" // Importamos tu tipo
+
+// Definimos la URL de la API (ajusta si la tienes en otro lado)
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api"
 
 interface PageProps {
   params: Promise<{
@@ -12,12 +15,46 @@ interface PageProps {
   }>
 }
 
+// Función auxiliar para buscar el usuario real
+async function getUser(id: string): Promise<User | null> {
+  const token = await getAuthToken()
+  
+  try {
+    const res = await fetch(`${API_URL}/users/${id}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json",
+      },
+      cache: "no-store", // Importante: No guardar caché para ver cambios al instante
+    })
+
+    if (!res.ok) return null
+
+    const backendUser = await res.json()
+
+    // TRANSFORMACIÓN DE DATOS (El Puente Backend -> Frontend)
+    return {
+      id: backendUser.id,
+      fullName: backendUser.name, // Laravel manda 'name', el form quiere 'fullName'
+      email: backendUser.email,
+      role_id: backendUser.role_id,
+      role: backendUser.role_id === 1 ? "Admin" : "Juez",
+      isActive: backendUser.is_active === 1 || backendUser.is_active === true,
+      createdAt: backendUser.created_at,
+      updatedAt: backendUser.updated_at,
+    }
+  } catch (error) {
+    console.error("Error fetching user:", error)
+    return null
+  }
+}
+
 export default async function EditUserPage({ params }: PageProps) {
   await requireAdmin()
-  const { id } = await params // Resolvemos la promesa
+  const { id } = await params
   
-  // Buscamos el usuario en la "base de datos"
-  const user = mockUsers.find((u) => u.id === id)
+  // AHORA BUSCAMOS EL USUARIO REAL
+  const user = await getUser(id)
 
   if (!user) {
     notFound()

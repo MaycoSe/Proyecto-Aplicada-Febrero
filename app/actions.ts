@@ -196,14 +196,15 @@ export async function createUser(prevState: any, formData: FormData) {
   const token = await getAuthToken()
   
   const roleValue = formData.get("role")
-  const roleId = roleValue === "admin" ? 1 : 2 
+  const role_id = roleValue === "admin" ? 1 : 2 
 
   const rawData = {
-    name: formData.get("firstName"), // Asegúrate que tu form use estos names
-    last_name: formData.get("lastName"),
+    name: formData.get("fullName"), // Asegúrate que tu form use estos names
+    // last_name: formData.get("lastName"),
     email: formData.get("email"),
     password: formData.get("password") || "12345678", // Default temporal si no envían
-    role_id: roleId,
+    role_id: formData.get("role_id") ,
+    // role_id: role_id,
   }
 
   const response = await fetch(`${API_URL}/register`, {
@@ -220,6 +221,11 @@ export async function createUser(prevState: any, formData: FormData) {
     const errorData = await response.json()
     return { success: false, message: errorData.message || "Error al crear usuario" }
   }
+  if (!response.ok) {
+      const text = await response.text();
+      console.log("🔥 ERROR DEL BACKEND:", response.status, text); // <--- MIRA TU TERMINAL
+      return { success: false, message: "Error: " + text };
+  }
 
   revalidatePath("/admin/users")
   return { success: true, message: "Usuario creado correctamente" }
@@ -230,9 +236,12 @@ export async function updateUser(prevState: any, formData: FormData) {
   const id = formData.get("id")
 
   const rawData: any = {
-    name: formData.get("firstName"),
-    last_name: formData.get("lastName"),
+    name: formData.get("fullName"),
+    // last_name: formData.get("lastName"),
     email: formData.get("email"),
+    role_id: formData.get("role_id"), // Laravel lo necesita sí o sí
+    is_active: formData.get("isActive"),
+    
   }
 
   const password = formData.get("password")

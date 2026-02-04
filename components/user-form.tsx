@@ -24,8 +24,9 @@ export function UserForm({ user }: UserFormProps) {
   const action = user ? updateUser : createUser
   const [state, formAction, isPending] = useActionState(action, initialState)
 
-  // CORRECCIÓN: Agregamos <string> para evitar el error de tipos en el Select
-  const [role, setRole] = useState<string>(user?.role || "judge")
+  // CAMBIO 1: Inicializamos con "2" (Juez) por defecto, o el ID que traiga el usuario
+  // Asumimos: 1 = Admin, 2 = Juez
+  const [roleId, setRoleId] = useState<string>(user?.role_id?.toString() || "2")
   const [isActive, setIsActive] = useState(user ? user.isActive : true)
 
   useEffect(() => {
@@ -57,6 +58,10 @@ export function UserForm({ user }: UserFormProps) {
 
           {user && <input type="hidden" name="id" value={user.id} />}
 
+          {/* IMPORTANTE: Enviamos contraseña por defecto si es usuario nuevo */}
+          {/* El backend la necesita si pusiste 'required' */}
+          {!user && <input type="hidden" name="password" value="camp2026" />}
+
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -70,24 +75,24 @@ export function UserForm({ user }: UserFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">Rol en el Sistema</Label>
+              <Label htmlFor="role_id">Rol en el Sistema</Label>
               
-              {/* TRUCO: Input oculto para enviar el valor real al servidor */}
-              <input type="hidden" name="role" value={role} />
+              {/* CAMBIO 2: El input oculto ahora se llama 'role_id' y envía números */}
+              <input type="hidden" name="role_id" value={roleId} />
               
-              {/* CORRECCIÓN: Usamos una función flecha para satisfacer a TypeScript */}
-              <Select value={role} onValueChange={(val: string) => setRole(val)}>
+              <Select value={roleId} onValueChange={setRoleId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccione rol..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="judge">Juez / Evaluador</SelectItem>
-                  <SelectItem value="admin">Administrador Total</SelectItem>
+                  {/* CAMBIO 3: Los valores son los IDs de tu tabla roles */}
+                  <SelectItem value="2">Juez / Evaluador</SelectItem>
+                  <SelectItem value="1">Administrador Total</SelectItem>
                 </SelectContent>
               </Select>
               
               <p className="text-[10px] text-slate-500">
-                  {role === 'judge' 
+                  {roleId === '2' 
                     ? "Puede evaluar eventos asignados y aplicar sanciones." 
                     : "Tiene acceso completo a configuración, auditoría y reportes."}
               </p>
@@ -95,13 +100,12 @@ export function UserForm({ user }: UserFormProps) {
 
             {!user && (
                  <div className="bg-slate-50 p-3 rounded border border-slate-200 text-sm text-slate-600">
-                    <span className="font-bold">Nota:</span> La contraseña por defecto será <code>camp2026</code>. El usuario podrá cambiarla al iniciar sesión.
+                    <span className="font-bold">Nota:</span> La contraseña por defecto será <code>camp2026</code>.
                  </div>
             )}
           </div>
 
           <div className="flex items-center space-x-2 border-t pt-4">
-            {/* TRUCO: Input oculto para el Switch */}
             <input type="hidden" name="isActive" value={isActive ? "on" : "off"} />
             
             <Switch 

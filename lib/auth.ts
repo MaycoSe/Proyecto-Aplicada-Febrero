@@ -7,12 +7,10 @@ import type { User, UserRole } from "./types"
 const TOKEN_COOKIE = "auth_token"
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 
-// Función auxiliar para convertir el rol de Laravel ("Admin", "Juez") al frontend ("admin", "judge")
 function mapRole(laravelRole: string): UserRole {
-  const role = laravelRole.toLowerCase().trim();
+  const role = laravelRole ? laravelRole.toLowerCase().trim() : "judge";
   if (role === 'admin' || role === 'administrador') return 'admin';
-  if (role === 'juez' || role === 'judge') return 'judge';
-  return 'judge'; // Default fallback
+  return 'judge'; 
 }
 
 export async function login(
@@ -39,8 +37,6 @@ export async function login(
       }
     }
 
-    // Mapeo de datos desde AuthController::login
-    // Estructura esperada: { user: {...}, token: "...", role: "..." }
     const userRole = mapRole(data.role);
 
     const userData: User = {
@@ -48,18 +44,20 @@ export async function login(
       email: data.user.email,
       fullName: `${data.user.name} ${data.user.last_name || ''}`.trim(),
       role: userRole,
+      // --- AGREGA ESTO ---
+      role_id: data.user.role_id, // Laravel lo envía por defecto en el objeto user
+      // -------------------
       isActive: true,
       createdAt: data.user.created_at || new Date().toISOString(),
       updatedAt: data.user.updated_at || new Date().toISOString(),
     }
 
-    // Guardar cookie
     const cookieStore = await cookies()
     cookieStore.set(TOKEN_COOKIE, data.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 días
+      maxAge: 60 * 60 * 24 * 7,
     })
 
     return { success: true, user: userData }
@@ -84,7 +82,7 @@ export async function logout(): Promise<void> {
         }
       })
     } catch (e) {
-      // Ignoramos error de logout si el token ya expiró
+      // Ignorar error
     }
   }
   
@@ -110,12 +108,14 @@ export async function getCurrentUser(): Promise<User | null> {
 
     const data = await response.json()
     
-    // Mapeo de datos desde UserController::get_user (versión actualizada)
     return {
         id: data.id.toString(),
         email: data.email,
         fullName: `${data.name} ${data.last_name || ''}`.trim(),
         role: mapRole(data.role),
+        // --- AGREGA ESTO ---
+        role_id: data.role_id, // <--- NECESARIO QUE EL BACKEND LO ENVÍE
+        // -------------------
         isActive: true,
         createdAt: data.created_at,
         updatedAt: data.updated_at
@@ -147,4 +147,9 @@ export async function requireJudge(): Promise<User> {
     redirect("/login")
   }
   return user
+}
+
+export async function getAuthToken() {
+  const cookieStore = await cookies()
+  return cookieStore.get(TOKEN_COOKIE)?.value
 }

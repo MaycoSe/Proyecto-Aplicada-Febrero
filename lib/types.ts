@@ -7,7 +7,8 @@ export interface User {
   id: string
   email: string
   fullName: string
-  role: UserRole
+  role_id: number
+  role?: string       // Opcional: El nombre del rol ("Admin") para mostrar en la tabla
   isActive: boolean
   createdAt: string
   updatedAt: string
