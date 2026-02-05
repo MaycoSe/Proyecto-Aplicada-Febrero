@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Download, FileText, Printer } from "lucide-react"
+import { Download, Printer } from "lucide-react"
 import type { ClubRanking } from "@/lib/types"
 
 export function ReportsExportButtons({ rankings }: { rankings: ClubRanking[] }) {
@@ -18,7 +18,7 @@ export function ReportsExportButtons({ rankings }: { rankings: ClubRanking[] }) 
     // 2. Mapear datos
     const rows = rankings.map(r => [
         r.rank,
-        `"${r.clubName}"`, // Comillas para evitar problemas con comas en nombres
+        `"${r.clubName}"`, 
         r.eventScores.toFixed(2),
         r.sanctionDeductions.toFixed(2),
         r.finalScore.toFixed(2)
@@ -42,25 +42,21 @@ export function ReportsExportButtons({ rankings }: { rankings: ClubRanking[] }) 
   }
 
   const handlePrint = () => {
-    // Abre el diálogo de impresión del navegador
-    // (CSS de impresión ya debería ocultar botones innecesarios si está bien configurado, 
-    // pero window.print() es la forma estándar de "Guardar como PDF")
     window.print()
   }
 
   return (
     <div className="flex gap-2 print:hidden">
-      <Button variant="outline" onClick={handlePrint} className="border-blue-200 hover:bg-blue-50 text-blue-700">
-        <FileText className="mr-2 h-4 w-4" />
-        PDF Global
-      </Button>
+      {/* Botón de Excel (Secundario / Verde) */}
       <Button variant="outline" onClick={handleExportCSV} className="border-green-200 hover:bg-green-50 text-green-700">
         <Download className="mr-2 h-4 w-4" />
-        Excel / CSV
+        Exportar CSV
       </Button>
-      <Button onClick={handlePrint} className="bg-slate-800 hover:bg-slate-900">
+
+      {/* Botón Principal (Imprimir / PDF) */}
+      <Button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700">
         <Printer className="mr-2 h-4 w-4" />
-        Imprimir
+        Imprimir / PDF
       </Button>
     </div>
   )

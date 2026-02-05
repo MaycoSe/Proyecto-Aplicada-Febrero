@@ -1,17 +1,46 @@
-import { requireAdmin } from "@/lib/auth"
+import { requireAdmin, getAuthToken } from "@/lib/auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { mockClubs, mockEvents, mockScores, mockUsers } from "@/lib/mock-data"
 import { Trophy, Calendar, Users, TrendingUp, FileText, ArrowRight } from "lucide-react"
 import Link from "next/link"
 
+// URL de la API
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api"
+
+// Función para obtener las estadísticas reales
+async function getDashboardStats() {
+  const token = await getAuthToken()
+  
+  try {
+    const res = await fetch(`${API_URL}/dashboard/stats`, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json",
+      },
+      cache: "no-store", // Para ver los números cambiar al instante
+    })
+
+    if (!res.ok) throw new Error("Error fetching stats")
+
+    return await res.json()
+  } catch (error) {
+    console.error(error)
+    // Retornamos ceros por defecto si falla, para que no explote la pantalla
+    return { total_clubs: 0, total_events: 0, total_judges: 0, total_scores: 0 }
+  }
+}
+
 export default async function AdminDashboard() {
   const user = await requireAdmin()
+  
+  // LLAMADA A LA BASE DE DATOS REAL
+  const data = await getDashboardStats()
 
+  // Mapeamos la respuesta del backend a tu objeto stats
   const stats = {
-    totalClubs: mockClubs.filter((c) => c.isActive).length,
-    totalEvents: mockEvents.filter((e) => e.isActive).length,
-    totalJudges: mockUsers.filter((u) => u.role === "judge" && u.isActive).length,
-    totalScores: mockScores.length,
+    totalClubs: data.total_clubs,
+    totalEvents: data.total_events,
+    totalJudges: data.total_judges,
+    totalScores: data.total_scores,
   }
 
   return (
@@ -47,12 +76,12 @@ export default async function AdminDashboard() {
 
         <Card className="border-l-4 border-l-purple-600 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Jueces</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-600">Jueces Activos</CardTitle>
             <Users className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-slate-900">{stats.totalJudges}</div>
-            <p className="mt-1 text-xs text-slate-500">Evaluadores registrados</p>
+            <p className="mt-1 text-xs text-slate-500">Evaluadores disponibles</p>
           </CardContent>
         </Card>
 
