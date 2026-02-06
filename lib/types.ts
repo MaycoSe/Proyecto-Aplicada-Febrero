@@ -30,11 +30,11 @@ export interface Event {
   eventType: string
   evaluationType: EvaluationType // Nuevo: Define qué formulario mostrar
   description?: string
-  maxScore: number
+  max_score: number
   weight: number
   startDate?: string
   endDate?: string
-  isActive: boolean
+  is_active: boolean | number
   createdAt: string
   updatedAt: string
 }
@@ -84,7 +84,7 @@ export interface ClubRanking {
   clubId: string
   clubName: string
   clubCode: string
-  totalScore: number
+  // totalScore: number
   eventScores: number
   sanctionDeductions: number
   finalScore: number

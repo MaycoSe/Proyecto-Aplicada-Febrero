@@ -10,7 +10,6 @@ import { BarChart3, TrendingUp, AlertCircle, Eye, Trophy } from "lucide-react"
 import { calculateRankings, getClubDetailedStats } from "@/lib/calculations"
 import { ReportsExportButtons } from "@/components/reports-export-buttons"
 
-// Definimos qué datos esperamos recibir del Servidor
 interface ReportsViewProps {
   clubs: any[]
   events: any[]
@@ -21,16 +20,25 @@ interface ReportsViewProps {
 export function ReportsView({ clubs, events, scores, sanctions }: ReportsViewProps) {
   const [selectedClubId, setSelectedClubId] = useState<string>("")
   
-  // 1. CÁLCULO EN TIEMPO REAL (Usando datos reales que vinieron por props)
+  // --- MI SOLUCIÓN: HELPER PARA EVITAR ERRORES CON DECIMALES ---
+  // Esta función verifica si el valor existe y es un número antes de intentar formatearlo.
+  // Si falla, devuelve "0.00" en lugar de romper la página.
+  const safeFormat = (value: any, decimals: number = 2): string => {
+    if (value === undefined || value === null) return "0.00"
+    const num = Number(value)
+    return isNaN(num) ? "0.00" : num.toFixed(decimals)
+  }
+  
+  // 1. CÁLCULO EN TIEMPO REAL
   const rankings = calculateRankings(clubs, events, scores, sanctions)
   
   const detailedStats = selectedClubId 
     ? getClubDetailedStats(selectedClubId, clubs, events, scores, sanctions) 
     : null
 
-  // Promedio general
+  // Promedio general (Protegido con Number() por si vienen strings)
   const averageScore = rankings.length > 0 
-    ? (rankings.reduce((acc, curr) => acc + curr.finalScore, 0) / rankings.length).toFixed(1) 
+    ? (rankings.reduce((acc, curr) => acc + (Number(curr.finalScore) || 0), 0) / rankings.length).toFixed(1) 
     : "0.0"
 
   return (
@@ -73,7 +81,7 @@ export function ReportsView({ clubs, events, scores, sanctions }: ReportsViewPro
                     {rankings[0]?.clubName || "Sin datos"}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {rankings[0] ? `${rankings[0].finalScore.toFixed(2)} puntos totales` : "Esperando puntajes"}
+                  {rankings[0] ? `${safeFormat(rankings[0].finalScore)} puntos totales` : "Esperando puntajes"}
                 </p>
               </CardContent>
             </Card>
@@ -157,11 +165,16 @@ export function ReportsView({ clubs, events, scores, sanctions }: ReportsViewPro
                             </span>
                         </TableCell>
                         <TableCell className="font-medium text-slate-700">{club.clubName}</TableCell>
-                        <TableCell className="text-right text-green-700 font-mono">+{club.eventScores.toFixed(2)}</TableCell>
+                        
+                        {/* AQUI USAMOS EL SAFE FORMAT */}
+                        <TableCell className="text-right text-green-700 font-mono">+{safeFormat(club.eventScores)}</TableCell>
+                        
                         <TableCell className="text-right text-red-600 font-mono font-semibold">
                             {club.sanctionDeductions > 0 ? `-${club.sanctionDeductions}` : <span className="text-slate-300">-</span>}
                         </TableCell>
-                        <TableCell className="text-right font-bold text-lg text-blue-950">{club.finalScore.toFixed(2)}</TableCell>
+                        
+                        {/* AQUI TAMBIEN */}
+                        <TableCell className="text-right font-bold text-lg text-blue-950">{safeFormat(club.finalScore)}</TableCell>
                         </TableRow>
                     ))
                   )}
@@ -189,7 +202,7 @@ export function ReportsView({ clubs, events, scores, sanctions }: ReportsViewPro
                     </SelectTrigger>
                     <SelectContent>
                         {clubs.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
                         ))}
                     </SelectContent>
                     </Select>
@@ -251,8 +264,8 @@ export function ReportsView({ clubs, events, scores, sanctions }: ReportsViewPro
                                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
                                                             {Object.entries(item.details).map(([k, v]) => (
                                                                 <div key={k} className={`flex justify-between border px-2 py-1 rounded ${Number(v) < 10 ? "bg-red-50 border-red-100" : "bg-green-50 border-green-100"}`}>
-                                                                        <span className="truncate mr-2">{k}</span>
-                                                                        <span className={`font-bold ${Number(v) < 10 ? "text-red-600" : "text-green-700"}`}>{v}</span>
+                                                                            <span className="truncate mr-2">{k}</span>
+                                                                            <span className={`font-bold ${Number(v) < 10 ? "text-red-600" : "text-green-700"}`}>{String(v)}</span>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -271,8 +284,10 @@ export function ReportsView({ clubs, events, scores, sanctions }: ReportsViewPro
                                                     </div>
                                                 )}
                                             </TableCell>
+                                            
+                                            {/* AQUI APLICAMOS LA PROTECCION FINAL */}
                                             <TableCell className="text-right font-bold text-lg text-slate-800">
-                                                {item.score.toFixed(2)}
+                                                {safeFormat(item.score)}
                                             </TableCell>
                                         </TableRow>
                                     ))}

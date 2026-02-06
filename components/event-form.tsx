@@ -10,12 +10,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle, CalendarPlus, Edit } from "lucide-react"
+import { CheckCircle, CalendarPlus, Edit, Lock } from "lucide-react"
 import { createEvent, updateEvent } from "@/app/actions"
-import type { Event } from "@/lib/types"
 
 interface EventFormProps {
-  event?: Event
+  event?: any 
 }
 
 const initialState = {
@@ -26,13 +25,29 @@ const initialState = {
 export function EventForm({ event }: EventFormProps) {
   const router = useRouter()
   
-  // Determinamos si es crear o editar
   const action = event ? updateEvent : createEvent
   const [state, formAction, isPending] = useActionState(action, initialState)
   
-  // Estados locales
-  const [evalType, setEvalType] = useState<string>(event?.evaluationType || "standard")
-  const [eventType, setEventType] = useState<string>(event?.eventType || "General")
+  // --- ESTADOS ---
+  const [evalType, setEvalType] = useState<string>(
+    event?.evaluation_type ?? event?.evaluationType ?? "standard"
+  )
+  const [eventType, setEventType] = useState<string>(
+    event?.event_type ?? event?.eventType ?? "General"
+  )
+  const [isActive, setIsActive] = useState(event ? Boolean(event.is_active) : true)
+
+  // Nuevo estado para el puntaje máximo
+  const [maxScoreValue, setMaxScoreValue] = useState<string>(
+    (event?.max_score ?? event?.maxScore ?? 100).toString()
+  )
+
+  // --- LÓGICA DE VALIDACIÓN ---
+  useEffect(() => {
+    if (evalType === "inspection") {
+      setMaxScoreValue("100")
+    }
+  }, [evalType])
 
   useEffect(() => {
     if (state.success) {
@@ -64,28 +79,31 @@ export function EventForm({ event }: EventFormProps) {
             </Alert>
           )}
 
-          {event && <input type="hidden" name="id" value={event.id} />}
+          {/* INPUTS OCULTOS */}
+          {event && (
+            <>
+                <input type="hidden" name="id" value={event.id} />
+                <input type="hidden" name="_method" value="PUT" />
+            </>
+          )}
+          
+          <input type="hidden" name="is_active" value={isActive ? "1" : "0"} />
+          <input type="hidden" name="evaluationType" value={evalType} />
+          <input type="hidden" name="eventType" value={eventType} />
+          
+          {/* Si el campo está disabled, no se envía. Por eso usamos este hidden como respaldo */}
+          {evalType === "inspection" && (
+            <input type="hidden" name="maxScore" value="100" />
+          )}
 
-          {/* Nombre y Tipo */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nombre del Evento *</Label>
-              <Input 
-                id="name" 
-                name="name" 
-                placeholder="Ej: Marchas, Inspección..." 
-                defaultValue={event?.name} 
-                required 
-              />
+              <Input id="name" name="name" defaultValue={event?.name} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="eventType">Categoría</Label>
-              <input type="hidden" name="eventType" value={eventType} />
-              
-              <Select 
-                value={eventType} 
-                onValueChange={(val: string) => setEventType(val)}
-              >
+              <Label>Categoría</Label>
+              <Select value={eventType} onValueChange={setEventType}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccione..." />
                 </SelectTrigger>
@@ -99,19 +117,12 @@ export function EventForm({ event }: EventFormProps) {
             </div>
           </div>
 
-          {/* Configuración de Evaluación */}
           <div className="space-y-3 border p-4 rounded-lg bg-slate-50">
              <Label className="text-blue-900 font-semibold">Configuración de Evaluación</Label>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="evaluationType">Método de Calificación *</Label>
-                    
-                    <input type="hidden" name="evaluationType" value={evalType} />
-                    
-                    <Select 
-                        value={evalType} 
-                        onValueChange={(val: string) => setEvalType(val)}
-                    >
+                    <Label>Método de Calificación *</Label>
+                    <Select value={evalType} onValueChange={setEvalType}>
                         <SelectTrigger>
                             <SelectValue />
                         </SelectTrigger>
@@ -120,57 +131,44 @@ export function EventForm({ event }: EventFormProps) {
                             <SelectItem value="inspection">Inspección (10 Ítems Fijos)</SelectItem>
                         </SelectContent>
                     </Select>
-                    
                     <p className="text-[10px] text-slate-500">
                         {evalType === 'inspection' 
-                            ? "10 ítems fijos (Higiene, Uniforme, etc.) del 1 al 10."
-                            : "Puntaje global desglosado por criterio subjetivo."}
+                            ? "Modo 10 ítems: El puntaje máximo es 100 obligatoriamente."
+                            : "Modo libre: Puede definir cualquier puntaje máximo."}
                     </p>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="maxScore">Puntaje Máximo *</Label>
+                    <Label htmlFor="maxScore" className="flex items-center gap-1">
+                      Puntaje Máximo *
+                      {evalType === "inspection" && <Lock className="w-3 h-3 text-slate-400" />}
+                    </Label>
                     <Input 
                         id="maxScore" 
-                        name="maxScore" 
+                        name={evalType === "inspection" ? "" : "maxScore"} // Evita duplicar nombre si hay hidden
                         type="number" 
-                        defaultValue={event?.maxScore || 100} 
+                        value={maxScoreValue}
+                        onChange={(e) => setMaxScoreValue(e.target.value)}
+                        disabled={evalType === "inspection"}
+                        className={evalType === "inspection" ? "bg-slate-100 font-bold text-blue-700" : ""}
                         required 
                     />
                 </div>
              </div>
           </div>
 
-          {/* Peso y Descripción */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
              <div className="col-span-1 space-y-2">
                 <Label htmlFor="weight">Peso (Multiplicador)</Label>
-                <Input 
-                    id="weight" 
-                    name="weight" 
-                    type="number" 
-                    defaultValue={event?.weight || 1} 
-                    min="1" 
-                    step="0.1" 
-                />
+                <Input id="weight" name="weight" type="number" defaultValue={event?.weight || 1} min="1" step="0.1" />
              </div>
              <div className="col-span-2 space-y-2">
                 <Label htmlFor="description">Descripción (Opcional)</Label>
-                <Textarea 
-                    id="description" 
-                    name="description" 
-                    placeholder="Detalles para el juez..." 
-                    defaultValue={event?.description}
-                    rows={2} 
-                />
+                <Textarea id="description" name="description" defaultValue={event?.description} rows={2} />
              </div>
           </div>
 
           <div className="flex items-center space-x-2 border-t pt-4">
-            <Switch 
-                id="isActive" 
-                name="isActive" 
-                defaultChecked={event ? event.isActive : true} 
-            />
+            <Switch id="isActive" checked={isActive} onCheckedChange={setIsActive} />
             <Label htmlFor="isActive">Habilitar evento inmediatamente</Label>
           </div>
 

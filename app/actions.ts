@@ -1,5 +1,5 @@
 "use server"
-
+// import { getAuthToken } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { cookies } from "next/headers"
@@ -135,37 +135,75 @@ export async function createEvent(prevState: any, formData: FormData) {
   return { success: true, message: "Evento creado exitosamente" }
 }
 
+
+// app/actions.ts
+
 export async function updateEvent(prevState: any, formData: FormData) {
-  const token = await getAuthToken()
+  const cookieStore = await cookies()
+  const token = cookieStore.get("auth_token")?.value
   const id = formData.get("id")
 
-  const rawData = {
-    name: formData.get("name"),
-    event_type: formData.get("eventType"),
-    evaluation_type: formData.get("evaluationType"),
-    description: formData.get("description"),
-    max_score: Number(formData.get("maxScore")),
-    weight: Number(formData.get("weight")),
-    is_active: formData.get("isActive") === "on",
-  }
-
-  const response = await fetch(`${API_URL}/events/${id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      "Authorization": `Bearer ${token}`,
-    },
-    body: JSON.stringify(rawData),
+  // --- DEBUG 1: ¿Qué tenemos antes de enviar? ---
+  console.log("--------------------------------------------------")
+  console.log(">>> [DEBUG NEXT] Intentando actualizar Evento ID:", id)
+  console.log(">>> [DEBUG NEXT] Datos del FormData:")
+  // Imprimimos todo el contenido del formulario
+  Array.from(formData.entries()).forEach(([key, value]) => {
+    console.log(`   ${key}:`, value)
   })
 
-  if (!response.ok) {
-    const errorData = await response.json()
-    return { success: false, message: errorData.message || "Error al actualizar el evento" }
+  if (!id) {
+    console.log(">>> [DEBUG NEXT] ERROR: No hay ID")
+    return { success: false, message: "Error: No ID" }
   }
 
-  revalidatePath("/admin/events")
-  return { success: true, message: "Evento actualizado correctamente" }
+  const url = `${API_URL}/events/${id}`
+  console.log(">>> [DEBUG NEXT] URL destino:", url)
+
+  try {
+      const res = await fetch(url, {
+        method: "POST", // Recordar: POST con _method: PUT
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json",
+          // Nota: No poner Content-Type manual con FormData
+        },
+        body: formData,
+      })
+
+      const responseText = await res.text() // Leemos como texto primero para ver si es HTML de error
+      console.log(">>> [DEBUG NEXT] Status Laravel:", res.status)
+      console.log(">>> [DEBUG NEXT] Respuesta cruda:", responseText)
+
+      let data
+      try {
+          data = JSON.parse(responseText)
+      } catch (e) {
+          console.log(">>> [DEBUG NEXT] Error al parsear JSON. Laravel devolvió HTML o texto plano.")
+          return { success: false, message: "Error de servidor (no JSON)" }
+      }
+
+      if (!res.ok) {
+        console.log(">>> [DEBUG NEXT] Laravel rechazó la petición:", data)
+        return {
+          success: false,
+          message: data.message || "Error al actualizar",
+          errors: data.errors,
+        }
+      }
+
+      revalidatePath("/admin/events") 
+      
+      return {
+        success: true,
+        message: "Evento actualizado correctamente",
+        data: data,
+      }
+
+  } catch (error) {
+      console.error(">>> [DEBUG NEXT] Error de red o fetch:", error)
+      return { success: false, message: "Error de conexión" }
+  }
 }
 
 export async function deleteEvent(id: string) {
@@ -292,69 +330,77 @@ export async function deleteUser(id: string) {
 // ACCIONES DE PUNTAJES Y SANCIONES
 // ==========================================
 
-export async function submitScore(data: any) {
-  // Nota: submitScore generalmente se llama desde un handler onSubmit cliente, no desde form action directo.
-  // Si usas useActionState aquí también, deberías cambiar la firma a (prevState, formData).
-  // Pero según tu componente score-form.tsx (visto en historial), usas fetch cliente o un action simple.
-  // Mantendremos la versión simple si la llamas manualmente.
-  
-  const token = await getAuthToken()
-  
-  const payload = {
-    event_id: data.eventId,
-    club_id: data.clubId,
-    total_score: data.totalScore,
-    details: data.details,
-    feedback: data.feedback
-  }
+// app/actions.ts
 
-  const response = await fetch(`${API_URL}/scores`, {
+// export async function submitScore(data: any) {
+//   const token = await getAuthToken()
+
+//   try {
+//     const res = await fetch(`${API_URL}/scores`, {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json",
+//         "Authorization": `Bearer ${token}`,
+//         "Accept": "application/json",
+//       },
+//       body: JSON.stringify({
+//         event_id: data.eventId,
+//         club_id: data.clubId,
+//         score: data.totalScore,
+//         details: data.details,
+//         feedback: data.feedback
+//       }),
+//     })
+
+//     const result = await res.json()
+
+//     if (!res.ok) {
+//       // AQUÍ ESTÁ LA CLAVE: Devolvemos 'message', no 'error'
+//       return { success: false, message: result.message || "Error al guardar puntaje" }
+//     }
+
+//     revalidatePath("/ranking")
+//     revalidatePath("/admin/reports")
+
+//     return { success: true, message: "Evaluación registrada correctamente" }
+
+//   } catch (error) {
+//     console.error(error)
+//     // En caso de fallo de red, devolvemos 'message'
+//     return { success: false, message: "Error de conexión con el servidor" }
+//   }
+// }
+// --- 3. FUNCIÓN PARA CREAR SANCIÓN ---
+export async function submitSanction(formData: FormData) {
+  const cookieStore = await cookies()
+  const token = cookieStore.get("auth_token")?.value
+
+  // Enviamos a la ruta de Laravel
+  const res = await fetch(`${API_URL}/sanctions`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
       "Authorization": `Bearer ${token}`,
+      "Accept": "application/json",
+      // SIN Content-Type para que funcione el FormData
     },
-    body: JSON.stringify(payload),
+    body: formData,
   })
 
-  if (!response.ok) {
-    const errorData = await response.json()
-    return { success: false, error: errorData.message || "Error al guardar puntaje" }
+  const data = await res.json()
+
+  if (!res.ok) {
+    return {
+      success: false,
+      message: data.message || "Error al aplicar sanción",
+      errors: data.errors
+    }
   }
 
-  revalidatePath("/judge")
-  return { success: true }
-}
-
-export async function submitSanction(prevState: any, formData: FormData) {
-  const token = await getAuthToken()
-
-  const rawData = {
-    event_id: formData.get("eventId"),
-    club_id: formData.get("clubId"),
-    description: formData.get("description"),
-    points_deducted: Number(formData.get("pointsDeducted")),
-    sanction_type: "Disciplinary" // Valor por defecto
+  return {
+    success: true,
+    message: "Sanción aplicada correctamente",
+    data: data
   }
-
-  const response = await fetch(`${API_URL}/sanctions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      "Authorization": `Bearer ${token}`,
-    },
-    body: JSON.stringify(rawData),
-  })
-
-  if (!response.ok) {
-    const errorData = await response.json()
-    return { success: false, message: errorData.message || "Error al crear sanción" }
-  }
-
-  revalidatePath("/judge")
-  return { success: true, message: "Sanción aplicada correctamente" }
 }
 
 // app/actions.ts
@@ -392,3 +438,78 @@ export async function assignJudges(prevState: any, formData: FormData) {
   
   return { success: true, message: "Jueces asignados correctamente. Redirigiendo..." }
 }
+
+// app/actions.ts
+
+
+
+
+// --- 1. FUNCIÓN PARA GUARDAR PUNTAJE (CORREGIDA) ---
+export async function submitScore(formData: FormData) {
+  const cookieStore = await cookies()
+  const token = cookieStore.get("auth_token")?.value
+
+  console.log("Enviando Score a:", `${API_URL}/scores`) // Debug
+
+  const res = await fetch(`${API_URL}/scores`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/json",
+      // ¡IMPORTANTE! NO AGREGAR "Content-Type".
+      // Al omitirlo, el navegador configura automáticamente "multipart/form-data" con el boundary correcto.
+    },
+    body: formData,
+  })
+
+  const data = await res.json()
+
+  if (!res.ok) {
+    console.error("Error al guardar score:", data)
+    return {
+      success: false,
+      message: data.message || "Error al guardar puntaje",
+      errors: data.errors 
+    }
+  }
+
+  return {
+    success: true,
+    message: "Puntaje guardado correctamente",
+    data: data
+  }
+}
+
+// --- 2. FUNCIÓN PARA ASIGNAR JUECES (CORREGIDA TAMBIÉN) ---
+// La actualizamos para que use la misma lógica segura
+// export async function assignJudges(prevState: any, formData: FormData) {
+//   const cookieStore = await cookies()
+//   const token = cookieStore.get("auth_token")?.value
+
+//   // Extraemos el ID del evento del propio FormData para armar la URL
+//   const eventId = formData.get("eventId") || formData.get("event_id")
+
+//   const res = await fetch(`${API_URL}/events/${eventId}/judges`, {
+//     method: "POST",
+//     headers: {
+//       "Authorization": `Bearer ${token}`,
+//       "Accept": "application/json",
+//       // Nuevamente: SIN Content-Type manual
+//     },
+//     body: formData,
+//   })
+
+//   const json = await res.json()
+
+//   if (!res.ok) {
+//     return { 
+//         success: false, 
+//         message: json.message || "Error al asignar jueces" 
+//     }
+//   }
+
+//   return { 
+//     success: true, 
+//     message: "Jueces asignados correctamente" 
+//   }
+// }

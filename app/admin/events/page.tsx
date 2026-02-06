@@ -44,15 +44,15 @@ export default async function EventsPage() {
                   <CardTitle className="text-xl">{event.name}</CardTitle>
                   <CardDescription>{event.eventType}</CardDescription>
                 </div>
-                <Badge variant={event.isActive ? "default" : "secondary"}>
-                  {event.isActive ? "Activo" : "Inactivo"}
-                </Badge>
+                  <Badge variant={event.is_active ? "default" : "secondary"}>
+                      {event.is_active ? "Activo" : "Inactivo"}
+                  </Badge>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Puntaje Máx:</span>
-                    <span className="font-medium">{event.maxScore}</span>
+                    <span className="font-medium">{event.max_score}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Peso:</span>

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ClipboardList, AlertTriangle } from "lucide-react"
 import Link from "next/link"
-import { getEvents } from "@/lib/api" // <--- Importamos el fetcher real
+import { getEvents, getJudgeEvents } from "@/lib/api" // <--- Importamos el fetcher real
 import { Event } from "@/lib/types"
 
 export default async function JudgeDashboard() {
@@ -11,13 +11,13 @@ export default async function JudgeDashboard() {
   let events: Event[] = []
   
   try {
-    events = await getEvents()
+    events = await getJudgeEvents()
   } catch (error) {
     console.error("Error al cargar eventos para el juez:", error)
   }
 
   // Filtrar solo los activos (opcional, si el backend no lo hace ya)
-  const activeEvents = events.filter(e => e.isActive)
+  const activeEvents = events.filter(e => e.is_active)
 
   return (
     <div className="space-y-6">
@@ -50,7 +50,7 @@ export default async function JudgeDashboard() {
                 <div className="text-sm text-muted-foreground space-y-1">
                   <div className="flex justify-between">
                     <span>Puntaje Máximo:</span>
-                    <span className="font-medium text-foreground">{event.maxScore} pts</span>
+                    <span className="font-medium text-foreground">{event.max_score?? 0} pts</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Peso:</span>

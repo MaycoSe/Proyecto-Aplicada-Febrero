@@ -1,5 +1,5 @@
 import { requireJudge } from "@/lib/auth"
-import { mockEvents } from "@/lib/mock-data"
+import { getEventById, getActiveClubs } from "@/lib/api" // Usamos la API real
 import { SanctionForm } from "@/components/sanction-form"
 import { notFound } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -13,11 +13,15 @@ interface PageProps {
 }
 
 export default async function SanctionPage({ params }: PageProps) {
-  // 1. Await params
   const { eventId } = await params
   
   await requireJudge()
-  const event = mockEvents.find((e) => e.id === eventId)
+  
+  // Fetch datos reales en paralelo
+  const [event, clubs] = await Promise.all([
+    getEventById(eventId),
+    getActiveClubs()
+  ])
 
   if (!event) {
     notFound()
@@ -33,14 +37,16 @@ export default async function SanctionPage({ params }: PageProps) {
         </Link>
       </div>
 
-      <div className="space-y-1 px-1 border-l-4 border-red-500 pl-4">
+      <div className="space-y-1 px-1 border-l-4 border-red-500 pl-4 bg-red-50 py-4 rounded-r-lg">
         <h1 className="text-2xl font-bold text-red-700">Aplicar Sanción</h1>
-        <p className="text-slate-600">
-            Estás por descontar puntos en el evento <span className="font-semibold text-slate-900">{event.name}</span>.
+        <p className="text-slate-700">
+            Estás reportando una infracción durante el evento: <br/>
+            <span className="font-bold text-xl">{event.name}</span>
         </p>
       </div>
 
-      <SanctionForm event={event} />
+      {/* Pasamos los datos reales al formulario */}
+      <SanctionForm event={event} clubs={clubs} />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState, useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,117 +8,131 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Slider } from "@/components/ui/slider"
-import { mockClubs } from "@/lib/mock-data"
-import type { Event } from "@/lib/types"
-import { CheckCircle } from "lucide-react"
+import { Loader2, CheckCircle, AlertCircle } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 import { submitScore } from "@/app/actions"
 
 interface ScoreFormProps {
-  event: Event
+  event: any
+  clubs: any[]
+  eventId: string
 }
 
-// Ítems definidos en el documento de requisitos
 const INSPECTION_ITEMS = [
-  "Higiene Personal",
-  "Uniforme Completo",
-  "Limpieza de Carpas",
-  "Orden de Mochilas",
-  "Herramientas",
-  "Cocina y Utensilios",
-  "Manejo de Alimentos",
-  "Higiene del Entorno",
-  "Disciplina",
-  "Puntualidad"
+  "Higiene Personal", "Uniforme Completo", "Limpieza de Carpas", 
+  "Orden de Mochilas", "Herramientas", "Cocina y Utensilios", 
+  "Manejo de Alimentos", "Higiene del Entorno", "Disciplina", "Puntualidad"
 ]
 
-const initialState = {
-  success: false,
-  message: ""
-}
-
-// OJO AQUÍ: Debe decir "export function" (no export default)
-export function ScoreForm({ event }: ScoreFormProps) {
+export function ScoreForm({ event, clubs, eventId }: ScoreFormProps) {
   const router = useRouter()
+  const { toast } = useToast()
   
-  // Hook para manejar Server Actions
-  const [state, formAction, isPending] = useActionState(submitScore, initialState)
+  // --- DETECCIÓN DE MODO (Solución al problema) ---
+  const isInspection = (event.evaluation_type ?? event.evaluationType) === "inspection"
+  const eventMaxScore = Number(event.max_score ?? event.maxScore ?? 100)
 
-  // Estados locales
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [clubId, setClubId] = useState("")
   const [notes, setNotes] = useState("")
   
-  // Estado: Evento Estándar
-  const [creativityScore, setCreativityScore] = useState("")
-  const [executionScore, setExecutionScore] = useState("")
-  const [presentationScore, setPresentationScore] = useState("")
-  const [standardTotal, setStandardTotal] = useState("")
+  // Estados para modo Standard
+  const [creativity, setCreativity] = useState("")
+  const [execution, setExecution] = useState("")
+  const [presentation, setPresentation] = useState("")
 
-  // Estado: Inspección
+  // Estado para modo Inspección
   const [inspectionScores, setInspectionScores] = useState<Record<string, number>>(
-    INSPECTION_ITEMS.reduce((acc, item) => ({ ...acc, [item]: 0 }), {})
+    INSPECTION_ITEMS.reduce((acc, item) => ({ ...acc, [item]: 10 }), {})
   )
 
+  // Cálculos de totales
   const inspectionTotal = Object.values(inspectionScores).reduce((a, b) => a + b, 0)
+  const standardTotal = (parseFloat(creativity) || 0) + 
+                        (parseFloat(execution) || 0) + 
+                        (parseFloat(presentation) || 0)
 
-  useEffect(() => {
-    if (state.success) {
-      setClubId("")
-      setNotes("")
-      setStandardTotal("")
-      setCreativityScore("")
-      setExecutionScore("")
-      setPresentationScore("")
-      setInspectionScores(INSPECTION_ITEMS.reduce((acc, item) => ({ ...acc, [item]: 0 }), {}))
+  const currentTotal = isInspection ? inspectionTotal : standardTotal
+  const isOverLimit = currentTotal > eventMaxScore
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!clubId) {
+        toast({ title: "Falta información", description: "Selecciona un club", variant: "destructive" })
+        return
     }
-  }, [state.success])
+
+    if (currentTotal < 0 || isOverLimit) {
+        toast({ 
+            title: "Puntaje Inválido", 
+            description: isOverLimit ? "Supera el máximo" : "No puede ser negativo", 
+            variant: "destructive" 
+        })
+        return
+    }
+
+    setIsSubmitting(true)
+
+    const details = isInspection 
+        ? inspectionScores 
+        : { creativity: parseFloat(creativity) || 0, execution: parseFloat(execution) || 0, presentation: parseFloat(presentation) || 0 }
+
+    const formData = new FormData()
+    formData.append("event_id", eventId) 
+    formData.append("club_id", clubId)
+    formData.append("score", currentTotal.toString())
+    formData.append("feedback", notes)
+    formData.append("details", JSON.stringify(details))
+
+    try {
+        const result = await submitScore(formData)
+        if (!result.success) throw new Error(result.message)
+
+        toast({ title: "Evaluación Guardada", description: "Puntaje registrado correctamente." })
+        
+        // Reset
+        setClubId("")
+        setNotes("")
+        setCreativity("")
+        setExecution("")
+        setPresentation("")
+        setInspectionScores(INSPECTION_ITEMS.reduce((acc, item) => ({ ...acc, [item]: 10 }), {}))
+        router.refresh()
+    } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" })
+    } finally {
+        setIsSubmitting(false)
+    }
+  }
 
   return (
     <Card className="w-full max-w-2xl mx-auto border-t-4 border-t-blue-600 shadow-lg">
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
           <span>{event.name}</span>
-          <span className="text-xs font-normal bg-slate-100 text-slate-600 px-2 py-1 rounded-full uppercase tracking-wider">
-            {event.evaluationType === "inspection" ? "Inspección Técnica" : "Evento Regular"}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+             <span className="text-xs font-normal bg-slate-100 text-slate-600 px-2 py-1 rounded-full uppercase tracking-wider">
+               {isInspection ? "Inspección Técnica" : "Evaluación Standard"}
+             </span>
+             <span className="text-xs font-bold text-blue-700">Máx: {eventMaxScore} pts</span>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           
-          {state.success && (
-            <Alert className="border-green-200 bg-green-50 text-green-800">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              <AlertDescription>{state.message}</AlertDescription>
-            </Alert>
-          )}
-
-          <input type="hidden" name="eventId" value={event.id} />
-          <input type="hidden" name="evaluationType" value={event.evaluationType} />
-          <input type="hidden" name="clubId" value={clubId} />
-          
-          {event.evaluationType === "inspection" ? (
-             <input type="hidden" name="inspectionDetails" value={JSON.stringify(inspectionScores)} />
-          ) : (
-             <>
-                <input type="hidden" name="standardTotal" value={standardTotal} />
-                <input type="hidden" name="creativityScore" value={creativityScore} />
-                <input type="hidden" name="executionScore" value={executionScore} />
-                <input type="hidden" name="presentationScore" value={presentationScore} />
-             </>
-          )}
-
           <div className="space-y-2">
             <Label>Club a Evaluar</Label>
-            <Select value={clubId} onValueChange={setClubId} disabled={isPending}>
+            <Select value={clubId} onValueChange={setClubId} disabled={isSubmitting}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccione un club..." />
               </SelectTrigger>
               <SelectContent>
-                {mockClubs.filter(c => c.isActive).map((club) => (
-                  <SelectItem key={club.id} value={club.id}>
-                    {club.name} ({club.code})
+                {clubs.map((club) => (
+                  <SelectItem key={club.id} value={club.id.toString()}>
+                    {club.name} ({club.code || 'S/C'})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -127,100 +141,78 @@ export function ScoreForm({ event }: ScoreFormProps) {
 
           <div className="h-px bg-slate-100 my-4" />
 
-          {event.evaluationType === "inspection" ? (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {INSPECTION_ITEMS.map((item) => (
-                  <div key={item} className="bg-slate-50 p-4 rounded-lg border space-y-3">
-                    <div className="flex justify-between items-center">
-                      <Label htmlFor={item} className="font-medium text-slate-700">{item}</Label>
-                      <span className="bg-white border px-2 py-0.5 rounded text-sm font-bold text-blue-600 min-w-[3rem] text-center">
-                        {inspectionScores[item]}/10
-                      </span>
-                    </div>
-                    <Slider
-                      id={item}
-                      min={0}
-                      max={10}
-                      step={1}
-                      value={[inspectionScores[item]]}
-                      onValueChange={(val) => setInspectionScores(prev => ({ ...prev, [item]: val[0] }))}
-                      disabled={isPending}
-                      className="cursor-pointer"
-                    />
+          {isInspection ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in">
+              {INSPECTION_ITEMS.map((item) => (
+                <div key={item} className="bg-slate-50 p-4 rounded-lg border space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-sm font-medium text-slate-700">{item}</Label>
+                    <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                        inspectionScores[item] < 10 ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+                    }`}>
+                      {inspectionScores[item]}/10
+                    </span>
                   </div>
-                ))}
-              </div>
-              <div className="flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <span className="text-blue-900 font-medium">Puntaje Total de Inspección</span>
-                <span className="text-2xl font-bold text-blue-700">{inspectionTotal} / 100</span>
-              </div>
+                  <Slider
+                    min={0} max={10} step={1}
+                    value={[inspectionScores[item]]}
+                    onValueChange={(val) => setInspectionScores(prev => ({ ...prev, [item]: val[0] }))}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              ))}
             </div>
           ) : (
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-              <div className="space-y-2">
-                <Label htmlFor="score">Puntaje Total (Máx: {event.maxScore})</Label>
-                <Input
-                  id="score"
-                  type="number"
-                  value={standardTotal}
-                  onChange={(e) => setStandardTotal(e.target.value)}
-                  placeholder="Ej: 95.5"
-                  className="text-lg font-bold"
-                  disabled={isPending}
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                {['Creatividad', 'Ejecución', 'Presentación'].map((label, i) => {
-                    const setters = [setCreativityScore, setExecutionScore, setPresentationScore];
-                    const values = [creativityScore, executionScore, presentationScore];
-                    return (
-                        <div key={label} className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">{label}</Label>
-                            <Input 
-                                type="number" 
-                                placeholder="0-100" 
-                                value={values[i]}
-                                onChange={(e) => setters[i](e.target.value)}
-                                disabled={isPending}
-                            />
-                        </div>
-                    )
-                })}
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in">
+               {[
+                 { label: "Creatividad", val: creativity, set: setCreativity },
+                 { label: "Ejecución", val: execution, set: setExecution },
+                 { label: "Presentación", val: presentation, set: setPresentation }
+               ].map(field => (
+                 <div key={field.label} className="space-y-2">
+                   <Label>{field.label}</Label>
+                   <Input 
+                     type="number" min="0" placeholder="0" 
+                     value={field.val} 
+                     onChange={(e) => field.set(e.target.value)}
+                     className="text-center font-bold"
+                     disabled={isSubmitting}
+                   />
+                 </div>
+               ))}
             </div>
           )}
 
-          <div className="space-y-2 pt-2">
-            <Label htmlFor="notes">Observaciones / Feedback</Label>
-            <Textarea
-              id="notes"
-              name="notes"
-              placeholder="Detalles sobre descuentos de puntos o felicitaciones..."
-              value={notes}
+          <div className={`flex items-center justify-between p-4 rounded-lg border sticky bottom-0 z-10 shadow-sm ${
+              isOverLimit ? "bg-red-50 border-red-200" : "bg-blue-50 border-blue-100"
+          }`}>
+             <div className="flex flex-col">
+                <span className="text-sm font-bold text-slate-600">Total Acumulado</span>
+                {isOverLimit && <span className="text-[10px] text-red-600 font-bold flex items-center"><AlertCircle className="w-3 h-3 mr-1"/> Supera el máximo</span>}
+             </div>
+             <span className={`text-4xl font-black ${isOverLimit ? "text-red-600" : "text-blue-700"}`}>
+                {currentTotal.toFixed(1)}
+             </span>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Observaciones</Label>
+            <Textarea 
+              id="notes" value={notes} 
               onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              disabled={isPending}
+              placeholder="Notas sobre el desempeño..." 
+              disabled={isSubmitting}
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <Button 
-                type="submit" 
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-                disabled={isPending || !clubId}
-            >
-              {isPending ? "Guardando..." : "Confirmar Evaluación"}
-            </Button>
-            <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => router.back()}
-                disabled={isPending}
-            >
-              Cancelar
-            </Button>
-          </div>
+          <Button 
+            type="submit" 
+            className={`w-full h-12 text-lg font-bold ${isOverLimit ? "bg-red-400" : "bg-green-600 hover:bg-green-700"}`}
+            disabled={isSubmitting || !clubId || isOverLimit}
+          >
+            {isSubmitting ? <Loader2 className="animate-spin mr-2"/> : <CheckCircle className="mr-2"/>}
+            {isOverLimit ? "Corregir Puntaje" : "Confirmar Evaluación"}
+          </Button>
         </form>
       </CardContent>
     </Card>

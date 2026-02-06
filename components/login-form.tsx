@@ -110,11 +110,11 @@ export function LoginForm() {
         </form>
       </CardContent>
       <CardFooter className="flex flex-col gap-2 border-t bg-slate-50/50 pt-4">
-        <div className="text-center text-xs text-slate-500">
+        {/* <div className="text-center text-xs text-slate-500">
             <p>Credenciales de prueba:</p>
             <p>Admin: <span className="font-mono text-blue-600">admin@camp.com</span> / <span className="font-mono">admin123</span></p>
             <p>Juez: <span className="font-mono text-blue-600">judge1@camp.com</span> / <span className="font-mono">judge123</span></p>
-        </div>
+        </div> */}
       </CardFooter>
     </Card>
   )
