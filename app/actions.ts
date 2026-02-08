@@ -102,6 +102,8 @@ export async function deleteClub(id: string) {
 // ACCIONES DE EVENTOS
 // ==========================================
 
+// app/actions.ts
+
 export async function createEvent(prevState: any, formData: FormData) {
   const token = await getAuthToken()
 
@@ -112,7 +114,10 @@ export async function createEvent(prevState: any, formData: FormData) {
     description: formData.get("description"),
     max_score: Number(formData.get("maxScore")),
     weight: Number(formData.get("weight")),
-    is_active: formData.get("isActive") === "on",
+    // Sincronizado con el input hidden "is_active" (1 o 0)
+    is_active: formData.get("is_active") === "1",
+    // NUEVO: Capturamos la fecha
+    date: formData.get("date"), 
   }
 
   const response = await fetch(`${API_URL}/events`, {
@@ -135,56 +140,38 @@ export async function createEvent(prevState: any, formData: FormData) {
   return { success: true, message: "Evento creado exitosamente" }
 }
 
-
-// app/actions.ts
-
 export async function updateEvent(prevState: any, formData: FormData) {
   const cookieStore = await cookies()
   const token = cookieStore.get("auth_token")?.value
   const id = formData.get("id")
 
-  // --- DEBUG 1: ¿Qué tenemos antes de enviar? ---
-  console.log("--------------------------------------------------")
-  console.log(">>> [DEBUG NEXT] Intentando actualizar Evento ID:", id)
-  console.log(">>> [DEBUG NEXT] Datos del FormData:")
-  // Imprimimos todo el contenido del formulario
-  Array.from(formData.entries()).forEach(([key, value]) => {
-    console.log(`   ${key}:`, value)
-  })
-
   if (!id) {
-    console.log(">>> [DEBUG NEXT] ERROR: No hay ID")
-    return { success: false, message: "Error: No ID" }
+    return { success: false, message: "Error: No se encontró el ID del evento." }
   }
 
   const url = `${API_URL}/events/${id}`
-  console.log(">>> [DEBUG NEXT] URL destino:", url)
 
   try {
       const res = await fetch(url, {
-        method: "POST", // Recordar: POST con _method: PUT
+        method: "POST", // Laravel procesa esto como PUT gracias al hidden _method
         headers: {
           "Authorization": `Bearer ${token}`,
           "Accept": "application/json",
-          // Nota: No poner Content-Type manual con FormData
+          // Nota: No poner Content-Type manual cuando enviamos FormData directamente
         },
         body: formData,
       })
 
-      const responseText = await res.text() // Leemos como texto primero para ver si es HTML de error
-      console.log(">>> [DEBUG NEXT] Status Laravel:", res.status)
-      console.log(">>> [DEBUG NEXT] Respuesta cruda:", responseText)
-
+      const responseText = await res.text()
+      
       let data
       try {
           data = JSON.parse(responseText)
       } catch (e) {
-          console.log(">>> [DEBUG NEXT] Error al parsear JSON. Laravel devolvió HTML o texto plano.")
-          return { success: false, message: "Error de servidor (no JSON)" }
+          return { success: false, message: "Error de servidor (Respuesta no válida)" }
       }
 
       if (!res.ok) {
-        console.log(">>> [DEBUG NEXT] Laravel rechazó la petición:", data)
         return {
           success: false,
           message: data.message || "Error al actualizar",
@@ -201,8 +188,8 @@ export async function updateEvent(prevState: any, formData: FormData) {
       }
 
   } catch (error) {
-      console.error(">>> [DEBUG NEXT] Error de red o fetch:", error)
-      return { success: false, message: "Error de conexión" }
+      console.error("Error en updateEvent:", error)
+      return { success: false, message: "Error de conexión con el servidor" }
   }
 }
 

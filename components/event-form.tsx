@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle, CalendarPlus, Edit, Lock } from "lucide-react"
+import { CheckCircle, CalendarPlus, Edit, Lock, MapPin, Calendar } from "lucide-react"
 import { createEvent, updateEvent } from "@/app/actions"
 
 interface EventFormProps {
@@ -25,6 +25,12 @@ const initialState = {
 export function EventForm({ event }: EventFormProps) {
   const router = useRouter()
   
+  // Determinamos la fecha de hoy para la validación (formato YYYY-MM-DD)
+  const today = new Date().toISOString().split('T')[0]
+  
+  // Si el evento tiene fecha, nos aseguramos que esté en formato YYYY-MM-DD para el input
+  const eventDate = event?.date ? event.date.split('T')[0] : ""
+
   const action = event ? updateEvent : createEvent
   const [state, formAction, isPending] = useActionState(action, initialState)
   
@@ -36,8 +42,6 @@ export function EventForm({ event }: EventFormProps) {
     event?.event_type ?? event?.eventType ?? "General"
   )
   const [isActive, setIsActive] = useState(event ? Boolean(event.is_active) : true)
-
-  // Nuevo estado para el puntaje máximo
   const [maxScoreValue, setMaxScoreValue] = useState<string>(
     (event?.max_score ?? event?.maxScore ?? 100).toString()
   )
@@ -91,15 +95,15 @@ export function EventForm({ event }: EventFormProps) {
           <input type="hidden" name="evaluationType" value={evalType} />
           <input type="hidden" name="eventType" value={eventType} />
           
-          {/* Si el campo está disabled, no se envía. Por eso usamos este hidden como respaldo */}
           {evalType === "inspection" && (
             <input type="hidden" name="maxScore" value="100" />
           )}
 
+          {/* Fila 1: Nombre y Categoría */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nombre del Evento *</Label>
-              <Input id="name" name="name" defaultValue={event?.name} required />
+              <Input id="name" name="name" defaultValue={event?.name} placeholder="Ej: Marchas, Inspección..." required />
             </div>
             <div className="space-y-2">
               <Label>Categoría</Label>
@@ -117,6 +121,35 @@ export function EventForm({ event }: EventFormProps) {
             </div>
           </div>
 
+          {/* Fila 2: Fecha y Ubicación (Nuevos campos) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="date" className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-slate-500" /> Fecha del Evento *
+              </Label>
+              <Input 
+                id="date" 
+                name="date" 
+                type="date" 
+                min={today} // Validación: No permite días pasados
+                defaultValue={eventDate} 
+                required 
+              />
+            </div>
+            {/* <div className="space-y-2">
+              <Label htmlFor="location" className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-slate-500" /> Ubicación
+              </Label>
+              <Input 
+                id="location" 
+                name="location" 
+                placeholder="Ej: Campo Central, Estadio..." 
+                defaultValue={event?.location} 
+              />
+            </div> */}
+          </div>
+
+          {/* Configuración de Evaluación */}
           <div className="space-y-3 border p-4 rounded-lg bg-slate-50">
              <Label className="text-blue-900 font-semibold">Configuración de Evaluación</Label>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -131,11 +164,6 @@ export function EventForm({ event }: EventFormProps) {
                             <SelectItem value="inspection">Inspección (10 Ítems Fijos)</SelectItem>
                         </SelectContent>
                     </Select>
-                    <p className="text-[10px] text-slate-500">
-                        {evalType === 'inspection' 
-                            ? "Modo 10 ítems: El puntaje máximo es 100 obligatoriamente."
-                            : "Modo libre: Puede definir cualquier puntaje máximo."}
-                    </p>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="maxScore" className="flex items-center gap-1">
@@ -144,7 +172,7 @@ export function EventForm({ event }: EventFormProps) {
                     </Label>
                     <Input 
                         id="maxScore" 
-                        name={evalType === "inspection" ? "" : "maxScore"} // Evita duplicar nombre si hay hidden
+                        name={evalType === "inspection" ? "" : "maxScore"} 
                         type="number" 
                         value={maxScoreValue}
                         onChange={(e) => setMaxScoreValue(e.target.value)}
@@ -156,6 +184,7 @@ export function EventForm({ event }: EventFormProps) {
              </div>
           </div>
 
+          {/* Peso y Descripción */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
              <div className="col-span-1 space-y-2">
                 <Label htmlFor="weight">Peso (Multiplicador)</Label>

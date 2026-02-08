@@ -27,13 +27,12 @@ export interface Club {
 export interface Event {
   id: string
   name: string
-  eventType: string
+  event_type: string
   evaluationType: EvaluationType // Nuevo: Define qué formulario mostrar
   description?: string
   max_score: number
   weight: number
-  startDate?: string
-  endDate?: string
+  date: string
   is_active: boolean | number
   createdAt: string
   updatedAt: string
