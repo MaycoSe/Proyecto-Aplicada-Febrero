@@ -192,3 +192,5 @@ export async function getActiveClubs() {
 export async function getJudgeEvents() {
   return fetchAPI("/judge/events") // Llama a la ruta filtrada
 }
+
+

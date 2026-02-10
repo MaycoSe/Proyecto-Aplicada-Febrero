@@ -467,36 +467,29 @@ export async function submitScore(formData: FormData) {
   }
 }
 
-// --- 2. FUNCIÓN PARA ASIGNAR JUECES (CORREGIDA TAMBIÉN) ---
-// La actualizamos para que use la misma lógica segura
-// export async function assignJudges(prevState: any, formData: FormData) {
-//   const cookieStore = await cookies()
-//   const token = cookieStore.get("auth_token")?.value
+export async function resetSystemData(type: 'scores' | 'sanctions') {
+  const token = await getAuthToken()
+  const endpoint = type === 'scores' ? '/system/reset-scores' : '/system/reset-sanctions'
 
-//   // Extraemos el ID del evento del propio FormData para armar la URL
-//   const eventId = formData.get("eventId") || formData.get("event_id")
+  try {
+    const res = await fetch(`${API_URL}${endpoint}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    })
 
-//   const res = await fetch(`${API_URL}/events/${eventId}/judges`, {
-//     method: "POST",
-//     headers: {
-//       "Authorization": `Bearer ${token}`,
-//       "Accept": "application/json",
-//       // Nuevamente: SIN Content-Type manual
-//     },
-//     body: formData,
-//   })
+    if (!res.ok) {
+        return { success: false, message: "Error al intentar borrar los datos." }
+    }
 
-//   const json = await res.json()
+    // Revalidamos todo el admin para que los contadores se pongan a cero
+    revalidatePath('/admin') 
+    
+    return { success: true, message: "Datos eliminados correctamente." }
 
-//   if (!res.ok) {
-//     return { 
-//         success: false, 
-//         message: json.message || "Error al asignar jueces" 
-//     }
-//   }
-
-//   return { 
-//     success: true, 
-//     message: "Jueces asignados correctamente" 
-//   }
-// }
+  } catch (error) {
+    return { success: false, message: "Error de conexión con el servidor." }
+  }
+}

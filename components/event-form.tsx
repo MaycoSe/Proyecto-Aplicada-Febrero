@@ -39,7 +39,7 @@ export function EventForm({ event }: EventFormProps) {
     event?.evaluation_type ?? event?.evaluationType ?? "standard"
   )
   const [eventType, setEventType] = useState<string>(
-    event?.event_type ?? event?.eventType ?? "General"
+    event?.event_type ?? "General"
   )
   const [isActive, setIsActive] = useState(event ? Boolean(event.is_active) : true)
   const [maxScoreValue, setMaxScoreValue] = useState<string>(

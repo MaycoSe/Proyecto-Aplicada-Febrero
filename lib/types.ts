@@ -28,7 +28,7 @@ export interface Event {
   id: string
   name: string
   event_type: string
-  evaluationType: EvaluationType // Nuevo: Define qué formulario mostrar
+  evaluation_type: EvaluationType // Nuevo: Define qué formulario mostrar
   description?: string
   max_score: number
   weight: number

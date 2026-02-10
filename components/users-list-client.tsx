@@ -5,26 +5,32 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, UserCog, UserX, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Search, UserCog, UserX, ChevronLeft, ChevronRight, RotateCcw, Filter } from "lucide-react"
 import Link from "next/link"
 
-// IMPORTANTE: Exportación nombrada
 export function UsersListClient({ users }: { users: any }) {
-  // ESCUDO ANTI-ERROR: Si 'users' no es array, lo arreglamos aquí mismo.
   const usersArray = Array.isArray(users) 
     ? users 
     : (users?.data && Array.isArray(users.data) ? users.data : []);
 
   const [searchTerm, setSearchTerm] = useState("")
+  // 1. NUEVO ESTADO
+  const [statusFilter, setStatusFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 6
 
-  // 1. Filtrado seguro usando el array protegido
-  const filteredUsers = usersArray.filter((u: any) =>
-    (u.fullName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (u.email || "").toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // 2. FILTRADO
+  const filteredUsers = usersArray.filter((u: any) => {
+    const matchesSearch = (u.fullName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (u.email || "").toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = statusFilter === "all" 
+        ? true 
+        : statusFilter === "active" ? u.isActive : !u.isActive;
+
+    return matchesSearch && matchesStatus;
+  })
 
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -35,6 +41,12 @@ export function UsersListClient({ users }: { users: any }) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setCurrentPage(1);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
@@ -42,13 +54,28 @@ export function UsersListClient({ users }: { users: any }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             placeholder="Buscar por nombre o correo..."
-            className="pl-9"
+            className="pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-colors"
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
           />
         </div>
-        {searchTerm && (
-          <Button variant="ghost" onClick={() => { setSearchTerm(""); setCurrentPage(1); }}>
+        
+        {/* 3. SELECTOR UI */}
+        <div className="relative w-full md:w-48">
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <select
+                className="w-full h-10 pl-9 pr-3 rounded-md border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+            >
+                <option value="all">Todos los estados</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
+            </select>
+        </div>
+
+        {(searchTerm || statusFilter !== "all") && (
+          <Button variant="ghost" onClick={clearFilters} className="text-slate-500 hover:text-red-500">
             <RotateCcw className="h-4 w-4 mr-2" /> Limpiar
           </Button>
         )}

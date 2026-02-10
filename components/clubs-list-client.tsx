@@ -5,28 +5,37 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, Trophy, Shield, Edit, FileText, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react"
+import { Search, Trophy, Edit, FileText, ChevronLeft, ChevronRight, RotateCcw, Filter } from "lucide-react"
 import Link from "next/link"
 
-// Exportación nombrada para evitar errores de importación
 export function ClubsListClient({ clubs }: { clubs: any }) {
-  
-  // 🛡️ ESCUDO ANTI-ERROR: Normalizamos la respuesta de Laravel
+  // ESCUDO ANTI-ERROR
   const clubsArray = Array.isArray(clubs) 
     ? clubs 
     : (clubs?.data && Array.isArray(clubs.data) ? clubs.data : []);
 
   const [searchTerm, setSearchTerm] = useState("")
+  // 1. NUEVO ESTADO PARA EL FILTRO
+  const [statusFilter, setStatusFilter] = useState("all") // 'all', 'active', 'inactive'
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 6
 
-  // 1. Lógica de Filtrado (Nombre y Código)
-  const filteredClubs = clubsArray.filter((club: any) =>
-    (club.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (club.code || "").toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // 2. LÓGICA DE FILTRADO COMBINADA
+  const filteredClubs = clubsArray.filter((club: any) => {
+    // A. Filtro por texto
+    const matchesSearch = (club.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (club.code || "").toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // B. Filtro por estado
+    const isActive = club.is_active === 1 || club.is_active === true;
+    const matchesStatus = statusFilter === "all" 
+        ? true 
+        : statusFilter === "active" ? isActive : !isActive;
 
-  // 2. Paginación
+    return matchesSearch && matchesStatus;
+  })
+
+  // Paginación
   const totalPages = Math.ceil(filteredClubs.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedClubs = filteredClubs.slice(startIndex, startIndex + itemsPerPage)
@@ -36,10 +45,19 @@ export function ClubsListClient({ clubs }: { clubs: any }) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  // Función para limpiar todo
+  const clearFilters = () => {
+      setSearchTerm("");
+      setStatusFilter("all");
+      setCurrentPage(1);
+  }
+
   return (
     <div className="space-y-6">
-      {/* BARRA DE BÚSQUEDA */}
+      {/* BARRA DE HERRAMIENTAS */}
       <div className="flex flex-col md:flex-row gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+        
+        {/* BUSCADOR */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
@@ -49,19 +67,34 @@ export function ClubsListClient({ clubs }: { clubs: any }) {
             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
           />
         </div>
-        {searchTerm && (
-          <Button variant="ghost" onClick={() => { setSearchTerm(""); setCurrentPage(1); }} className="text-slate-500">
+
+        {/* 3. SELECTOR DE ESTADO */}
+        <div className="relative w-full md:w-48">
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <select
+                className="w-full h-10 pl-9 pr-3 rounded-md border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+            >
+                <option value="all">Todos los estados</option>
+                <option value="active">Solo Activos</option>
+                <option value="inactive">Solo Inactivos</option>
+            </select>
+        </div>
+
+        {(searchTerm || statusFilter !== "all") && (
+          <Button variant="ghost" onClick={clearFilters} className="text-slate-500 hover:text-red-600">
             <RotateCcw className="h-4 w-4 mr-2" /> Limpiar
           </Button>
         )}
       </div>
 
-      {/* GRILLA DE CLUBES */}
+      {/* GRILLA DE CLUBES (Igual que antes) */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {paginatedClubs.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-12 text-slate-400 border-2 border-dashed rounded-lg bg-slate-50">
-            <Shield className="h-10 w-10 mb-2 opacity-50" />
-            <p>No se encontraron clubes.</p>
+            <Trophy className="h-10 w-10 mb-2 opacity-50" />
+            <p>No se encontraron clubes con esos filtros.</p>
           </div>
         ) : (
           paginatedClubs.map((club: any) => (
@@ -82,9 +115,6 @@ export function ClubsListClient({ clubs }: { clubs: any }) {
               </CardHeader>
               
               <CardContent>
-                {/* Aquí podrías agregar el Director si la API lo devuelve en el futuro */}
-                {/* <div className="text-sm text-slate-500 mb-4">Director: {club.director_name}</div> */}
-
                 <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 mt-2">
                   <Button variant="outline" size="sm" asChild className="border-slate-300 text-slate-600">
                     <Link href={`/admin/clubs/${club.id}/edit`}>

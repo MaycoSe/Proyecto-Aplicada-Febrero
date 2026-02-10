@@ -66,7 +66,7 @@ export function UserForm({ user }: UserFormProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="fullName">Nombre Completo *</Label>
-                    <Input id="fullName" name="fullName" placeholder="Ej: Juan Pérez" defaultValue={user?.fullName} required />
+                    <Input id="fullName" name="fullName" placeholder="Ej: Juan Pérez" defaultValue={user?.fullName} required  onChange={(e) => {e.target.value = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "")}}  />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="email">Correo Electrónico *</Label>

@@ -1,71 +1,59 @@
 import { requireAdmin, getAuthToken } from "@/lib/auth"
-import { ReportsView } from "@/components/reports-view" // <--- Importamos el componente que creamos arriba
+import { ReportsView } from "@/components/reports-view" 
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api"
 
-async function getRawReportData() {
+// Definimos la forma exacta de los datos que devuelve tu nuevo Backend
+export interface RankingItem {
+  id: number
+  name: string
+  code: string
+  events_score: number      // Puntos ganados por eventos (ya multiplicados por peso)
+  sanctions_penalty: number // Puntos restados
+  total_score: number       // El total final
+}
+
+async function getRankingData(): Promise<RankingItem[]> {
   const token = await getAuthToken()
   
   try {
-    // Usamos el endpoint de ranking que devuelve TODO crudo
+    // Llamamos al endpoint que devuelve el array ya calculado y ordenado
     const res = await fetch(`${API_URL}/ranking`, {
-      headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
-      cache: "no-store" 
+      headers: { 
+        "Authorization": `Bearer ${token}`, 
+        "Accept": "application/json" 
+      },
+      cache: "no-store" // Importante: No guardar caché para ver cambios al instante
     })
 
-    if (!res.ok) throw new Error("Error fetching data")
+    if (!res.ok) throw new Error("Error fetching ranking data")
 
     const data = await res.json()
-
-    // Mapeo de datos (BD -> Frontend Format)
-    const clubs = data.clubs.map((c: any) => ({
-      id: c.id.toString(),
-      name: c.name,
-      code: c.code
-    }))
-
-    const events = data.events.map((e: any) => ({
-      id: e.id.toString(),
-      name: e.name,
-      // Si tu motor de cálculo usa pesos, agrégalos aquí:
-      // weight: Number(e.weight) || 1
-    }))
-
-    const scores = data.scores.map((s: any) => ({
-      clubId: s.club_id.toString(),
-      eventId: s.event_id.toString(),
-      value: Number(s.score), // Leemos la columna score (o total_score)
-      // Pasamos los detalles JSON para el desglose en el modal
-      details: s.details || {},
-      feedback: s.feedback
-    }))
-
-    const sanctions = data.sanctions.map((s: any) => ({
-      clubId: s.club_id.toString(),
-      pointsDeducted: Number(s.points_deducted)
-    }))
-
-    return { clubs, events, scores, sanctions }
+    return data as RankingItem[]
 
   } catch (error) {
-    console.error("Error cargando datos de reporte:", error)
-    return { clubs: [], events: [], scores: [], sanctions: [] }
+    console.error("Error cargando ranking:", error)
+    return []
   }
 }
 
 export default async function ReportsPage() {
-  await requireAdmin()
+  const user = await requireAdmin()
   
-  // 1. Obtenemos datos frescos
-  const rawData = await getRawReportData()
+  // 1. Obtenemos el ranking listo del servidor
+  const rankingData = await getRankingData()
 
-  // 2. Renderizamos la vista cliente pasándole los datos
   return (
-    <ReportsView 
-      clubs={rawData.clubs}
-      events={rawData.events}
-      scores={rawData.scores}
-      sanctions={rawData.sanctions}
-    />
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+           <h1 className="text-3xl font-bold text-blue-950">Ranking Oficial</h1>
+           <p className="text-slate-600">Posiciones calculadas en tiempo real.</p>
+        </div>
+      </div>
+
+      {/* 2. Se lo pasamos a la vista */}
+      <ReportsView ranking={rankingData} />
+    </div>
   )
 }
