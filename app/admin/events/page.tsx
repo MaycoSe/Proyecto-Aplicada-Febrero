@@ -1,19 +1,28 @@
-export const dynamic = 'force-dynamic'; // <--- AGREGÁ ESTO
+export const dynamic = 'force-dynamic';
+
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import Link from "next/link"
 import { getEvents } from "@/lib/api"
-import { EventsListClient } from "@/components/events-list-client" // <--- Importación corregida
+import { EventsListClient } from "@/components/events-list-client"
+import { Suspense } from "react" // <--- Importamos Suspense
 
-export default async function EventsPage() {
-  let events = []
-  
+// 1. Subcomponente que maneja la carga de datos de eventos
+async function EventsData() {
   try {
-    events = await getEvents()
+    const events = await getEvents()
+    return <EventsListClient events={events} />
   } catch (error) {
     console.error("Error cargando eventos:", error)
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-600">
+        Error al cargar los eventos. Por favor, intenta de nuevo.
+      </div>
+    )
   }
+}
 
+export default function EventsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -29,7 +38,15 @@ export default async function EventsPage() {
         </Button>
       </div>
 
-      <EventsListClient events={events} />
+      {/* 2. Envolvemos la carga en Suspense */}
+      <Suspense fallback={
+        <div className="flex flex-col space-y-3">
+          <p className="text-slate-500 animate-pulse">Cargando eventos...</p>
+          <div className="h-[300px] w-full bg-slate-100 rounded-xl animate-pulse" />
+        </div>
+      }>
+        <EventsData />
+      </Suspense>
     </div>
   )
 }
