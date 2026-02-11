@@ -24,7 +24,7 @@ export async function createClub(prevState: any, formData: FormData) {
     code: formData.get("code"),
     description: formData.get("description"),
     // CAMBIO AQUÍ: 'is_active' para coincidir con la base de datos
-    is_active: formData.get("isActive") === "on",
+    is_active: formData.get("is_active") === "1",
   }
 
   const response = await fetch(`${API_URL}/clubs`, {
@@ -56,7 +56,7 @@ export async function updateClub(prevState: any, formData: FormData) {
     code: formData.get("code"),
     description: formData.get("description"),
     // CAMBIO AQUÍ: 'is_active' para coincidir con la base de datos
-    is_active: formData.get("isActive") === "on", 
+    is_active: formData.get("is_active") === "1", 
   }
 
   const response = await fetch(`${API_URL}/clubs/${id}`, {
