@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'; // <--- AGREGÁ ESTO
+
 import type React from "react"
 
 export const metadata = {

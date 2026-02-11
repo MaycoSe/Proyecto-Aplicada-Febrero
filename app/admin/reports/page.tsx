@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'; // <--- AGREGÁ ESTO
+
 import { requireAdmin, getAuthToken } from "@/lib/auth"
 import { ReportsView } from "@/components/reports-view" 
 

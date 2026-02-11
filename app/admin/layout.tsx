@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'; // <--- AGREGÁ ESTO
+
 import type React from "react"
 import { requireAdmin } from "@/lib/auth"
 import { AdminSidebar } from "@/components/admin-sidebar"
