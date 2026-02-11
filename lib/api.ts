@@ -1,12 +1,14 @@
 // lib/api.ts
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
+import { unstable_noStore as noStore } from 'next/cache';
 import { getAuthToken } from "@/lib/auth"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 
 // Helper para obtener headers con el token
 async function getHeaders() {
+  noStore() // Indicamos que esta función no debe ser cacheada
   const cookieStore = await cookies()
   const token = cookieStore.get("auth_token")?.value
   
@@ -33,6 +35,7 @@ async function getHeaders() {
 
 
 export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
+  noStore() // Indicamos que esta función no debe ser cacheada
   const cookieStore = await cookies();
   const token = cookieStore.get("auth_token")?.value;
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
