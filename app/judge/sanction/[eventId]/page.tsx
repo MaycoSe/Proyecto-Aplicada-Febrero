@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'; // <--- AGREGÁ ESTO
 import { requireJudge } from "@/lib/auth"
 import { getEventById, getActiveClubs } from "@/lib/api" // Usamos la API real
 import { SanctionForm } from "@/components/sanction-form"
