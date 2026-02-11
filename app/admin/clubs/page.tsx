@@ -1,20 +1,24 @@
-export const dynamic = 'force-dynamic'; // <--- AGREGÁ ESTO
+export const dynamic = 'force-dynamic';
+
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import Link from "next/link"
 import { getClubs } from "@/lib/api"
-// Importamos el componente interactivo
 import { ClubsListClient } from "@/components/clubs-list-client"
+import { Suspense } from "react" // <--- Importá esto
 
-export default async function ClubsPage() {
-  let clubs = []
-  
+// 1. Creamos un subcomponente que hace la carga de datos
+async function ClubsData() {
   try {
-    clubs = await getClubs()
+    const clubs = await getClubs()
+    return <ClubsListClient clubs={clubs} />
   } catch (error) {
     console.error("Error cargando clubes:", error)
+    return <p className="text-red-500">Error al cargar los clubes.</p>
   }
+}
 
+export default function ClubsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -30,8 +34,10 @@ export default async function ClubsPage() {
         </Button>
       </div>
 
-      {/* Le pasamos los datos al componente seguro */}
-      <ClubsListClient clubs={clubs} />
+      {/* 2. Envolvemos el cargador de datos en Suspense */}
+      <Suspense fallback={<p>Cargando lista de clubes...</p>}>
+        <ClubsData />
+      </Suspense>
     </div>
   )
 }
