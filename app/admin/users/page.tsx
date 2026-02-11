@@ -1,60 +1,47 @@
-import { requireAdmin } from "@/lib/auth"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { mockUsers } from "@/lib/mock-data"
-import { Plus, Mail, Shield } from "lucide-react"
+import { Plus } from "lucide-react"
+import Link from "next/link"
+import { getAllUsers } from "@/lib/api" 
+// CORRECCIÓN: Importación nombrada con llaves { }
+import { UsersListClient } from "@/components/users-list-client" 
 
 export default async function UsersPage() {
-  await requireAdmin()
+  let users: any[] = []
+  
+  try {
+    const rawUsers = await getAllUsers()
+    
+    // Si rawUsers es un objeto con .data (paginación de Laravel), lo extraemos
+    const usersToMap = Array.isArray(rawUsers) ? rawUsers : (rawUsers?.data || [])
+
+    users = usersToMap.map((u: any) => ({
+      id: u.id.toString(),
+      email: u.email,
+      fullName: `${u.name} ${u.last_name || ''}`.trim(),
+      role_id: u.role_id,
+      isActive: u.is_active, 
+    }))
+
+  } catch (error) {
+    console.error("Error cargando usuarios:", error)
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Users</h1>
-          <p className="mt-1 text-slate-600">Manage system users and roles</p>
+          <h1 className="text-3xl font-bold tracking-tight text-blue-950">Gestión de Usuarios</h1>
+          <p className="text-slate-500">Administra los jueces y administradores del sistema.</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add User
+        <Button asChild className="bg-blue-600 hover:bg-blue-700">
+          <Link href="/admin/users/new">
+            <Plus className="mr-2 h-4 w-4" /> Nuevo Usuario
+          </Link>
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {mockUsers.map((user) => (
-              <div key={user.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                    <Shield className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-900">{user.fullName}</h3>
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Mail className="h-3 w-3" />
-                      {user.email}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge variant={user.role === "admin" ? "default" : "secondary"}>{user.role}</Badge>
-                  <Badge variant={user.isActive ? "default" : "secondary"}>
-                    {user.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                  <Button variant="outline" size="sm">
-                    Edit
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* LLAMADA AL COMPONENTE PROTEGIDO */}
+      <UsersListClient users={users} />
     </div>
   )
 }

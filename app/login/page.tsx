@@ -1,27 +1,22 @@
 import { LoginForm } from "@/components/login-form"
-import { getCurrentUser } from "@/lib/auth"
-import { redirect } from "next/navigation"
 
-export default async function LoginPage() {
-  const user = await getCurrentUser()
-
-  // Redirect if already logged in
-  if (user) {
-    if (user.role === "admin") {
-      redirect("/admin")
-    } else {
-      redirect("/judge")
-    }
-  }
-
+export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-slate-900">Camp Score</h1>
-          <p className="mt-2 text-slate-600">Management System</p>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-100 p-4 bg-[url('https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center">
+      {/* Capa oscura para que se lea el texto sobre la imagen de fondo */}
+      <div className="absolute inset-0 bg-blue-950/70 backdrop-blur-sm" />
+      
+      <div className="relative z-10 w-full max-w-md space-y-8">
+        <div className="text-center text-white">
+            <h1 className="text-4xl font-black tracking-tight drop-shadow-md">CAMPOREE 2026</h1>
+            <p className="mt-2 text-blue-100">Plataforma Oficial de Evaluación</p>
         </div>
+        
         <LoginForm />
+        
+        <p className="text-center text-xs text-blue-200/60">
+            © 2026 Asociación de Clubes. Todos los derechos reservados.
+        </p>
       </div>
     </div>
   )

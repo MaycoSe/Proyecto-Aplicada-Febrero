@@ -1,53 +1,36 @@
-import { requireAdmin } from "@/lib/auth"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { mockClubs } from "@/lib/mock-data"
-import { Plus, Trophy } from "lucide-react"
+import { Plus } from "lucide-react"
+import Link from "next/link"
+import { getClubs } from "@/lib/api"
+// Importamos el componente interactivo
+import { ClubsListClient } from "@/components/clubs-list-client"
 
 export default async function ClubsPage() {
-  await requireAdmin()
+  let clubs = []
+  
+  try {
+    clubs = await getClubs()
+  } catch (error) {
+    console.error("Error cargando clubes:", error)
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Clubs</h1>
-          <p className="mt-1 text-slate-600">Manage competing clubs</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Gestión de Clubes</h1>
+          <p className="text-slate-500">Administra los clubes participantes en el camporee.</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Club
+        <Button asChild className="bg-orange-600 hover:bg-orange-700 text-white shadow-md">
+          <Link href="/admin/clubs/new">
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo Club
+          </Link>
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {mockClubs.map((club) => (
-          <Card key={club.id}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <Trophy className="h-8 w-8 text-blue-600" />
-                <Badge variant={club.isActive ? "default" : "secondary"}>{club.isActive ? "Active" : "Inactive"}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h3 className="text-xl font-bold text-slate-900">{club.name}</h3>
-                <p className="text-sm font-medium text-slate-500">Code: {club.code}</p>
-              </div>
-              {club.description && <p className="text-sm text-slate-600">{club.description}</p>}
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                  Edit
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                  View Scores
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Le pasamos los datos al componente seguro */}
+      <ClubsListClient clubs={clubs} />
     </div>
   )
 }
