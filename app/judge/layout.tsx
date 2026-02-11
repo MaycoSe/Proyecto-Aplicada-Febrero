@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'; // <--- AGREGÁ ESTO
+
 import type React from "react"
 import { requireAuth } from "@/lib/auth"
 import { redirect } from "next/navigation"
